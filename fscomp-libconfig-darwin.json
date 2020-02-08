@@ -1,0 +1,6 @@
+{
+    "CPPPATH": [ "include" ],
+    "FRAMEWORKS": [ "Security", "CoreServices" ],
+    "LIBPATH": [ "lib" ],
+    "LIBS": [ "asynctls" ]
+}

@@ -1,0 +1,25 @@
+Import('env')
+import os
+
+env.Command('asynctls_version.c', [],
+            """echo 'const char *asynctls_version_tag = \
+    "F-S_v:: asynctls 1.0.%s";' >$TARGET""" % os.getenv("BUILD_NUMBER", "9999"))
+
+env['CCFLAGS'] += ' -fPIC'      # make objects usable for shared libs
+
+env['CPPPATH'] = [
+    '#include',
+]
+
+env.ParseConfig(env['CONFIG_PARSER'])
+
+if env['ARCH'] in [ 'linux32', 'linux64' ]:
+    env.StaticLibrary('asynctls',
+                      [ 'tls_connection.c',
+                        'tls_openssl.c',
+                        'asynctls_version.c' ])
+else:
+    env.StaticLibrary('asynctls',
+                      [ 'tls_connection.c',
+                        'tls_securetransport.c',
+                        'asynctls_version.c' ])

@@ -1,0 +1,47 @@
+Import('env')
+
+if env['ARCH'] == 'darwin':
+    env['FRAMEWORKS'] += [ 'Security', 'CoreServices' ]
+
+env['CCFLAGS'] += ' -O0'
+
+env['CPPPATH'] = [
+    '../components/asynctls/include',
+]
+
+env['LIBPATH'] = [
+    '../components/asynctls/lib',
+]
+
+env['LIBS'] = [
+    'asynctls',
+]
+
+env.ParseConfig(env['CONFIG_PARSER'])
+
+sources = ['src/tls_connection.c']
+if env['ARCH'] == 'darwin':
+    sources += ['src/tls_securetransport.c']
+else:
+    sources += ['src/tls_openssl.c']
+
+env.Substfile('fstracecheck.in',
+              '#fstracecheck.in',
+              SUBST_DICT = {
+                  '@CC@': '$CC',
+                  '@CONFIG_PARSER@': '$CONFIG_PARSER',
+                  '@FSTRACECHECK@': '$FSTRACECHECK',
+                  '@SOURCES@': ' '.join(sources),
+              }
+)
+env.Command('fstracecheck',
+            'fstracecheck.in',
+            [
+                Copy('$TARGET', '$SOURCE'),
+                Chmod('$TARGET', 0755),
+            ]
+)
+
+env.Program('tlstest', [ 'tlstest.c' ])
+
+env.Program('tlstestserver', [ 'tlstestserver.c' ])
