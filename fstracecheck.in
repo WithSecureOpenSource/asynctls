@@ -8,6 +8,6 @@ flags=(
 
 libconfig_flags=$(@CONFIG_PARSER@ |
     tr ' ' '\n' |
-    grep -v '^-[lL]')
+    grep '^-[DI]')
 
 exec @FSTRACECHECK@ "${flags[@]}" $libconfig_flags @SOURCES@
