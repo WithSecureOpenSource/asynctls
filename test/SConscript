@@ -38,7 +38,7 @@ env.Command('fstracecheck',
             'fstracecheck.in',
             [
                 Copy('$TARGET', '$SOURCE'),
-                Chmod('$TARGET', 0755),
+                Chmod('$TARGET', 0o755),
             ]
 )
 
