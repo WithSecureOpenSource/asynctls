@@ -4,26 +4,30 @@ set -ex
 
 test-hostname-verification() {
     test/tlscommunicationtest.py test test pass
-    test/tlscommunicationtest.py test '*' pass
-    test/tlscommunicationtest.py test 'te*' pass
-    test/tlscommunicationtest.py testsite 'te*site' pass
-    test/tlscommunicationtest.py testsite 't*s*e' fail
+    test/tlscommunicationtest.py test '*' fail
+    test/tlscommunicationtest.py test 'te*' fail
+    test/tlscommunicationtest.py test '*st' fail
+    test/tlscommunicationtest.py test 'test*' fail
+    test/tlscommunicationtest.py test '*test' fail
+    test/tlscommunicationtest.py test 't*st' fail
+    test/tlscommunicationtest.py test 'te*st' fail
+    test/tlscommunicationtest.py test 't*s*' fail
     test/tlscommunicationtest.py test.sub test.sub pass
     test/tlscommunicationtest.py test.sub '*.sub' pass
     test/tlscommunicationtest.py test.sub '*' fail
-    test/tlscommunicationtest.py test.sub '*.*' pass
+    test/tlscommunicationtest.py test.sub '*.*' fail
+    test/tlscommunicationtest.py test.sub 'te*.sub' pass
+    test/tlscommunicationtest.py test.sub '*st.sub' pass
+    test/tlscommunicationtest.py test.sub 'test*.sub' pass
+    test/tlscommunicationtest.py test.sub '*test.sub' pass
+    test/tlscommunicationtest.py test.sub 't*st.sub' fail
+    test/tlscommunicationtest.py test.sub 'te*st.sub' fail
+    test/tlscommunicationtest.py test.sub 't*s*.sub' fail
     test/tlscommunicationtest.py test.sub invalid.sub fail
     test/tlscommunicationtest.py test.sub 'invalid.*' fail
     test/tlscommunicationtest.py TEST.SUB test.sub pass
-    test/tlscommunicationtest.py test '*ss' fail
-    test/tlscommunicationtest.py test 'tt*' fail
-    test/tlscommunicationtest.py test 'test*' pass
-    test/tlscommunicationtest.py test '*test' pass
-    test/tlscommunicationtest.py test '*te' fail
-    test/tlscommunicationtest.py test 'te*st' pass
     test/tlscommunicationtest.py test tes fail
     test/tlscommunicationtest.py test testa fail
-    test/tlscommunicationtest.py teest 'tee*est' fail
 }
 
 test-server() {

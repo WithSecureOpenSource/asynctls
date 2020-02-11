@@ -434,171 +434,6 @@ ssize_t tls_read_plain_input(tls_conn_t *conn, void *buf, size_t count)
     }
 }
 
-/* Return false for a mismatch
-   Compares with wildcard (*) check if allowed
-*/
-static bool compare_label(const char *host, const char *common,
-                          const char *hostend, const char *commonend,
-                          bool wildcard_allowed)
-{
-    /* Host name can't be shorter than common. The only exception is where
-     * common name contains single wildcard which would match empty string.
-     * Common name might contain wildcard so it can be shorter. */
-    size_t host_length = hostend - host;
-    size_t common_length = commonend - common;
-    if (!wildcard_allowed && (host_length != common_length)) {
-        return false;
-    }
-    if (wildcard_allowed && (host_length < (common_length - 1))) {
-        return false;
-    }
-
-    while(host < hostend || common < commonend) {
-        if (host == hostend && common != commonend) {
-            /* Host name has ended, common has one more character left. Verify
-             * that it is a wildcard or else the labels don't match. */
-            return *common == '*';
-        }
-        char host_char = charstr_lcase_char(*host);
-        char common_char = charstr_lcase_char(*common);
-        if (wildcard_allowed && common_char == '*') {
-            common += 1;
-            /* Move host to point to a string with same amount of characters
-             * length as common name has after wildcard. Lengths are validated
-             * at the beginning. */
-            host = hostend - (commonend - common);
-
-            /* Only one wildcard is allowed */
-            wildcard_allowed = false;
-        } else {
-            if (host_char != common_char) {
-                return false;
-            }
-            host += 1;
-            common += 1;
-        }
-    }
-    return true;
-}
-
-/* Validate requested hostname against a hostname in X509 certificate.
- *
- * The implementation follows RFC6125 with these notes:
- *  - Internationalized Domain Names are not supported
- *  - Comparing domain names is case-insensitive with ASCII characters
- *  - Wildcard certificates checking is not as strict as specified in
- *    Section 6.4.3 (check below for more clarification)
- *
- * Wildcard certificates checking is relaxed with couple points specified in
- * Section 7.2. The implemented checking follows these rules:
- *  - Wildcard may be present in any label except in the right-most label
- *  - Wildcard may contain prefix and/or suffix in the label where it is
- *  - Only one wildcard is allowed in single label (second one is not consider )
- */
-static bool compare_hostname(const char *hostpos, const char *commonpos)
-{
-    bool wildcard_allowed = true;
-    for (;;) {
-        const char *hostend = strchr(hostpos, '.');
-        const char *commonend = strchr(commonpos, '.');
-
-        if (hostend == NULL || commonend == NULL) {
-            if (hostend != commonend) {
-                return false;
-            }
-
-            /* Wildcard is not allowed in the right-most label */
-            wildcard_allowed = false;
-            hostend = strchr(hostpos, '\0');
-            commonend = strchr(commonpos, '\0');
-        }
-
-        if (!compare_label(hostpos, commonpos, hostend, commonend,
-                wildcard_allowed)) {
-            return false;
-        }
-
-        if (*hostend == '\0') {
-            return true;
-        }
-
-        hostpos = hostend + 1;
-        commonpos = commonend + 1;
-    }
-}
-
-static const char *trace_gen_name_type(void *ptype)
-{
-    switch (*(int *) ptype) {
-        case GEN_OTHERNAME:
-            return "GEN_OTHERNAME";
-        case GEN_EMAIL:
-            return "GEN_EMAIL";
-        case GEN_DNS:
-            return "GEN_DNS";
-        case GEN_X400:
-            return "GEN_X400";
-        case GEN_DIRNAME:
-            return "GEN_DIRNAME";
-        case GEN_EDIPARTY:
-            return "GEN_EDIPARTY";
-        case GEN_URI:
-            return "GEN_URI";
-        case GEN_IPADD:
-            return "GEN_IPADD";
-        case GEN_RID:
-            return "GEN_RID";
-        default:
-            return "?";
-    }
-}
-
-FSTRACE_DECL(ASYNCTLS_OPENSSL_ALT_NAME_COUNT, "UID=%64u N=%d");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_ALT_NAME_TYPE, "UID=%64u I=%d TYPE=%I");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_ALT_NAME_EVIL, "UID=%64u I=%d ALT-NAME=%A");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_ALT_NAME_MATCH,
-             "UID=%64u I=%d ALT-NAME=%s SERVER-NAME=%s");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_ALT_NAME_MISMATCH,
-             "UID=%64u I=%d ALT-NAME=%s SERVER-NAME=%s");
-
-/* Return false for a mismatch. */
-static bool compare_cert_sub_names(tls_conn_t *conn, X509 *peer)
-{
-    struct stack_st *san_names =
-        X509_get_ext_d2i(peer, NID_subject_alt_name, NULL, NULL);
-    int san_names_nb = sk_num(san_names);
-    FSTRACE(ASYNCTLS_OPENSSL_ALT_NAME_COUNT, conn->uid, san_names_nb);
-    int result = false;
-    int i;
-    for (i = 0; i < san_names_nb; i++) {
-        const GENERAL_NAME *current_name =
-            (GENERAL_NAME *) sk_value(san_names, i);
-        FSTRACE(ASYNCTLS_OPENSSL_ALT_NAME_TYPE,
-                conn->uid, i, trace_gen_name_type, &current_name->type);
-        if (current_name->type == GEN_DNS) {
-            const char *dns_name =
-                (char *) ASN1_STRING_get0_data(current_name->d.dNSName);
-            /* Make sure there isn't an embedded NUL in the DNS name */
-            size_t length = ASN1_STRING_length(current_name->d.dNSName);
-            if (length != strlen(dns_name)) {
-                FSTRACE(ASYNCTLS_OPENSSL_ALT_NAME_EVIL,
-                        conn->uid, i, dns_name, length);
-                break;
-            }
-            if (compare_hostname(conn->server_name, dns_name)) {
-                FSTRACE(ASYNCTLS_OPENSSL_ALT_NAME_MATCH,
-                        conn->uid, i, dns_name, conn->server_name);
-                result = true;
-                break;
-            }
-            FSTRACE(ASYNCTLS_OPENSSL_ALT_NAME_MISMATCH,
-                    conn->uid, i, dns_name, conn->server_name);
-        }
-    }
-    sk_pop_free(san_names, (void (*)(void *)) GENERAL_NAME_free);
-    return result;
-}
-
 static const char *trace_tlsext_type(void *ptype)
 {
     switch (*(int *) ptype) {
@@ -775,40 +610,6 @@ static long ssl_get_verify_result(tls_conn_t *conn)
     return err;
 }
 
-FSTRACE_DECL(ASYNCTLS_OPENSSL_NO_PEER_NAME, "UID=%64u");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_COMMON_NAME_MATCH,
-             "UID=%64u COMMON-NAME=%s SERVER-NAME=%s");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_COMMON_NAME_MISMATCH,
-             "UID=%64u COMMON-NAME=%s SERVER-NAME=%s");
-
-static bool verify_cert(tls_conn_t *conn)
-{
-    if (ssl_get_verify_result(conn) != X509_V_OK)
-        return false;
-    X509 *peer = SSL_get_peer_certificate(tech(conn)->ssl);
-    X509_NAME *name = X509_get_subject_name(peer);
-    if (!name) {
-        FSTRACE(ASYNCTLS_OPENSSL_NO_PEER_NAME, conn->uid);
-        X509_free(peer);
-        return false;
-    }
-    if (!compare_cert_sub_names(conn, peer)) {
-        char peer_CN[256];
-        X509_NAME_get_text_by_NID(name, NID_commonName,
-                                      peer_CN, sizeof peer_CN);
-        if (!compare_hostname(conn->server_name, peer_CN)) {
-            FSTRACE(ASYNCTLS_OPENSSL_COMMON_NAME_MISMATCH,
-                    conn->uid, peer_CN, conn->server_name);
-            X509_free(peer);
-            return false;
-        }
-        FSTRACE(ASYNCTLS_OPENSSL_COMMON_NAME_MATCH,
-                conn->uid, peer_CN, conn->server_name);
-    }
-    X509_free(peer);
-    return true;
-}
-
 static bool verify_pinned_cert(X509 *cert, blob_t *pinned)
 {
     size_t size = i2d_X509_PUBKEY(X509_get_X509_PUBKEY(cert), NULL);
@@ -825,7 +626,7 @@ static bool verify_server(tls_conn_t *conn)
     switch (conn->client.ca_bundle->bundle_type) {
         case CA_BUNDLE_SYSTEM:
         case CA_BUNDLE_OPENSSL_CONTEXT:
-            return verify_cert(conn);
+            return true;
         case CA_BUNDLE_SYNTHETIC: {
             void *user_data = conn->client.ca_bundle->synthetic.user_data;
             return conn->client.ca_bundle->synthetic.verify(user_data);
@@ -889,6 +690,7 @@ int tls_perform_handshake(tls_conn_t *conn)
                 errno = EAGAIN;
                 return -1;
             default:
+                ssl_get_verify_result(conn);
                 return declare_protocol_error(conn);
         }
 }
@@ -1110,6 +912,16 @@ void tls_initialize_underlying_client_tech(tls_conn_t *conn)
             assert(false);
     }
     SSL *ssl = SSL_new(ctx);
+    switch (conn->client.ca_bundle->bundle_type) {
+        case CA_BUNDLE_SYSTEM:
+        case CA_BUNDLE_OPENSSL_CONTEXT:
+            /* TODO: deal with the error */
+            assert(SSL_set1_host(ssl, conn->server_name) == 1);
+            SSL_set_verify(ssl, SSL_VERIFY_PEER, NULL);
+            break;
+        default:
+            break;
+    }
     initialize_underlying_tech(conn, ssl);
     SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME,
         TLSEXT_NAMETYPE_host_name, (char *) conn->server_name);
