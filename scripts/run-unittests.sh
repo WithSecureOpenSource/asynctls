@@ -45,14 +45,14 @@ test-client-system-bundle() {
     SSL_CERT_DIR=$openssl_dir/certs \
     SSL_CERT_FILE=$openssl_dir/cert.pem \
     run-test $arch stage/$arch/build/test/tlstest \
-        www.f-secure.com 443 www.f-secure.com
+        github.com 443 github.com
 }
 
 test-client-file-bundle() {
     local arch=$1
     run-test $arch stage/$arch/build/test/tlstest \
         --file test/certs/DigiCert_High_Assurance_EV_Root_CA.pem \
-        www.f-secure.com 443 www.f-secure.com
+        github.com 443 github.com
 }
 
 test-server() {
