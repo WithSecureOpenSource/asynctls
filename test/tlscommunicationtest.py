@@ -116,15 +116,6 @@ def start_client(pem_file, hostname, port):
         stdout=subprocess.PIPE)
 
 def start_openssl_client(pem_file, hostname, port):
-    openssl_bin = os.path.join(
-        "stage",
-        get_arch(),
-        "components",
-        "openssl-binary",
-        "bin",
-    )
-    env = os.environ.copy()
-    env["PATH"] = "{}:{}".format(openssl_bin, env["PATH"])
     return subprocess.Popen(
         [
             "openssl",
@@ -138,7 +129,6 @@ def start_openssl_client(pem_file, hostname, port):
             hostname,
             "-verify_return_error",
         ],
-        env=env,
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
     )
