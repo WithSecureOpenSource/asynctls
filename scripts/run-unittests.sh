@@ -2,19 +2,6 @@
 
 set -ex
 
-run-test () {
-    local arch=$1
-    shift
-    case $arch in
-        darwin)
-            "$@"
-            ;;
-        *)
-            valgrind -q --leak-check=full --error-exitcode=123 "$@"
-            ;;
-    esac
-}
-
 test-hostname-verification() {
     test/tlscommunicationtest.py test test pass
     test/tlscommunicationtest.py test '*' pass
@@ -39,22 +26,6 @@ test-hostname-verification() {
     test/tlscommunicationtest.py teest 'tee*est' fail
 }
 
-test-client-system-bundle() {
-    local arch=$1 openssl_dir
-    openssl_dir=$(openssl version -d | awk '{ print $2 }' | tr -d '"')
-    SSL_CERT_DIR=$openssl_dir/certs \
-    SSL_CERT_FILE=$openssl_dir/cert.pem \
-    run-test $arch stage/$arch/build/test/tlstest \
-        github.com 443 github.com
-}
-
-test-client-file-bundle() {
-    local arch=$1
-    run-test $arch stage/$arch/build/test/tlstest \
-        --file test/certs/DigiCert_High_Assurance_EV_Root_CA.pem \
-        github.com 443 github.com
-}
-
 test-server() {
     test/tlscommunicationtest.py --use-openssl-client test.foo '*.foo' pass
 }
@@ -74,14 +45,11 @@ main() {
     case "$(uname)" in
         Linux)
             test-fstrace linux64
-            test-client-system-bundle linux64
-            test-client-file-bundle linux64
             test-hostname-verification
             test-server
             ;;
         Darwin)
             test-fstrace darwin
-            test-client-system-bundle darwin
             test-server
             ;;
         *)
