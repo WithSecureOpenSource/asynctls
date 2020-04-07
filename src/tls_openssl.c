@@ -58,6 +58,7 @@ typedef struct {
 
 struct tls_ca_bundle {
     ca_bundle_type_t bundle_type;
+    int ref_count;
     union {
         struct {
             SSL_CTX *ctx;
@@ -718,6 +719,7 @@ tls_ca_bundle_t *make_tls_ca_bundle(const char *pem_file_pathname,
     assert(ret == 1);           /* TODO: deal with the error */
     tls_ca_bundle_t *ca_bundle = fsalloc(sizeof *ca_bundle);
     ca_bundle->bundle_type = CA_BUNDLE_OPENSSL_CONTEXT;
+    ca_bundle->ref_count = 1;
     ca_bundle->openssl_context.ctx = ssl_ctx;
     return ca_bundle;
 }
@@ -737,6 +739,7 @@ tls_ca_bundle_t *make_synthetic_tls_ca_bundle(bool (*verify)(void *user_data),
 {
     tls_ca_bundle_t *ca_bundle = fsalloc(sizeof *ca_bundle);
     ca_bundle->bundle_type = CA_BUNDLE_SYNTHETIC;
+    ca_bundle->ref_count = 1;
     ca_bundle->synthetic.verify = verify;
     ca_bundle->synthetic.user_data = user_data;
     return ca_bundle;
@@ -771,6 +774,7 @@ tls_ca_bundle_t *make_pinned_tls_ca_bundle(const char *pem_file_pathname,
 {
     tls_ca_bundle_t *ca_bundle = fsalloc(sizeof *ca_bundle);
     ca_bundle->bundle_type = CA_BUNDLE_PINNED;
+    ca_bundle->ref_count = 1;
     ca_bundle->pinned.leaf_certificates = make_list();
     if (pem_file_pathname)
         append_certs_from(pem_file_pathname,
@@ -791,9 +795,9 @@ tls_ca_bundle_t *make_pinned_tls_ca_bundle(const char *pem_file_pathname,
 
 void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
 {
+    if (ca_bundle->bundle_type == CA_BUNDLE_SYSTEM || --ca_bundle->ref_count)
+        return;
     switch (ca_bundle->bundle_type) {
-        case CA_BUNDLE_SYSTEM:
-            return;
         case CA_BUNDLE_SYNTHETIC:
             break;
         case CA_BUNDLE_OPENSSL_CONTEXT:
@@ -812,6 +816,12 @@ void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
             assert(false);
     }
     fsfree(ca_bundle);
+}
+
+tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
+{
+    ca_bundle->ref_count++;
+    return ca_bundle;
 }
 
 tls_credentials_t *make_tls_credentials(const char *pem_cert_chain_pathname,

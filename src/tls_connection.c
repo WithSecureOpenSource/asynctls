@@ -307,14 +307,12 @@ static tls_conn_t *open_connection(async_t *async,
 
 static tls_conn_t *make_client(async_t *async,
                                bytestream_1 encrypted_input_stream,
-                               bool shared,
                                tls_ca_bundle_t *ca_bundle,
                                const char *server_hostname)
 {
     tls_conn_t *conn = open_connection(async, encrypted_input_stream);
     conn->server_name = server_hostname;
     conn->is_client = true;
-    conn->client.ca_bundle_shared = shared;
     conn->client.ca_bundle = ca_bundle;
     conn->client.alpn_choice = NULL;
     return conn;
@@ -322,12 +320,11 @@ static tls_conn_t *make_client(async_t *async,
 
 static tls_conn_t *open_client(async_t *async,
                                bytestream_1 encrypted_input_stream,
-                               bool shared,
                                tls_ca_bundle_t *ca_bundle,
                                const char *server_hostname)
 {
     tls_conn_t *conn = make_client(async, encrypted_input_stream,
-                                   shared, ca_bundle, server_hostname);
+                                   ca_bundle, server_hostname);
     tls_initialize_underlying_client_tech(conn);
     conn->state = TLS_CONN_STATE_HANDSHAKING;
     return conn;
@@ -342,7 +339,7 @@ tls_conn_t *adopt_tls_client(async_t *async,
                              void *underlying_connection)
 {
     tls_conn_t *conn = make_client(async, encrypted_input_stream,
-                                   false, ca_bundle, NULL);
+                                   share_tls_ca_bundle(ca_bundle), NULL);
     FSTRACE(ASYNCTLS_CONN_CLIENT_ADOPT, conn->uid, conn, async,
             encrypted_input_stream.obj, ca_bundle, underlying_connection);
     tls_adopt_tech(conn, underlying_connection);
@@ -360,7 +357,7 @@ tls_conn_t *open_tls_client(async_t *async,
                             const char *server_hostname)
 {
     tls_conn_t *conn =
-        open_client(async, encrypted_input_stream, false,
+        open_client(async, encrypted_input_stream,
                     make_tls_ca_bundle(pem_file_pathname, pem_dir_pathname),
                     server_hostname);
     FSTRACE(ASYNCTLS_CONN_CLIENT_CREATE, conn->uid, conn, async,
@@ -378,8 +375,8 @@ tls_conn_t *open_tls_client_2(async_t *async,
                               const char *server_hostname)
 {
     tls_conn_t *conn =
-        open_client(async, encrypted_input_stream, true, ca_bundle,
-                    server_hostname);
+        open_client(async, encrypted_input_stream,
+                    share_tls_ca_bundle(ca_bundle), server_hostname);
     FSTRACE(ASYNCTLS_CONN_CLIENT_CREATE2, conn->uid, conn, async,
             encrypted_input_stream.obj, ca_bundle, server_hostname);
     return conn;
@@ -464,7 +461,8 @@ FSTRACE_DECL(ASYNCTLS_CONN_READ_DUMP, "UID=%64u DATA=%B");
 
 ssize_t tls_read(tls_conn_t *conn, void *buf, size_t count)
 {
-    ssize_t n = bytestream_1_read(tls_get_plain_input_stream(conn), buf, count);
+    ssize_t n =
+        bytestream_1_read(tls_get_plain_input_stream(conn), buf, count);
     FSTRACE(ASYNCTLS_CONN_READ, conn->uid, count, n);
     FSTRACE(ASYNCTLS_CONN_READ_DUMP, conn->uid, buf, n);
     return n;
@@ -487,8 +485,7 @@ void tls_close(tls_conn_t *conn)
     bytestream_1_close(conn->encrypted_input_stream);
     if (conn->is_client) {
         /* client */
-        if (!conn->client.ca_bundle_shared)
-            destroy_tls_ca_bundle(conn->client.ca_bundle);
+        destroy_tls_ca_bundle(conn->client.ca_bundle);
         fsfree(conn->client.alpn_choice);
     } else {
         /* server */
