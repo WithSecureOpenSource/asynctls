@@ -170,8 +170,8 @@ const char *tls_get_server_name(tls_conn_t *conn);
 
 /* This function is used by the client to inform the server (through
  * the ALPN extension) about the acceptability of one or more
- * protocols. Call the function separately for each protocol. If the
- * function is not called, no ALPN exchange will take place.
+ * protocols. If the function is not called, no ALPN exchange will
+ * take place.
  *
  * Terminate the protocol list with (const char *) NULL.
  *
