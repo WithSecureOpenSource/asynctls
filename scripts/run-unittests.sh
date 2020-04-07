@@ -40,8 +40,12 @@ test-fstrace() {
 }
 
 realpath () {
-    # reimplementation of "readlink -fw" for OSX
-    python -c "import os.path, sys; print os.path.realpath(sys.argv[1])" "$1"
+    if [ -x "/bin/realpath" ]; then
+        /bin/realpath "$@"
+    else
+        python -c "import os.path, sys; print os.path.realpath(sys.argv[1])" \
+               "$1"
+    fi
 }
 
 main() {
