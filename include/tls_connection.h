@@ -68,16 +68,17 @@ tls_conn_t *open_tls_client(async_t *async,
 
 /* While each call to open_tls_client() constructs a separate CA bundle,
  * open_tls_client_2() allows for sharing one CA bundle among several
- * connections, which should be better for performance. The bundle
- * should exist for as long as the TLS connection exists. */
+ * connections, which should be better for performance. The CA bundle
+ * is only needed for the duration of the call. */
 tls_conn_t *open_tls_client_2(async_t *async,
                               bytestream_1 encrypted_input_stream,
                               tls_ca_bundle_t *ca_bundle,
                               const char *server_hostname);
 
-/* Make asynctls take control over tls context, created elsewhere.
- * WARNING: This function is very implementation specific, so you must ensure
- * that underlying implementation of asynctls matches the one you are using. */
+/* Make asynctls take control over the tls context, created elsewhere.
+ * WARNING: This function is very implementation-specific, so you must
+ * ensure that the underlying implementation of asynctls matches the
+ * one you are using. */
 tls_conn_t *adopt_tls_client(async_t *async,
                              bytestream_1 encrypted_input_stream,
                              tls_ca_bundle_t *ca_bundle,
@@ -110,6 +111,16 @@ tls_ca_bundle_t *make_pinned_tls_ca_bundle(const char *pem_file_pathname,
                                            const char *pem_dir_pathname);
 
 void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle);
+
+/* Create a new reference to an already existing CA bundle. The
+ * shared, underlying data structures are protected through reference
+ * counting. Each tls_ca_bundle_t object must be deallocated
+ * eventually using destroy_tls_ca_bundle().
+ *
+ * The return value may be the same as or different from ca_bundle. If
+ * the same reference is returned, destroy_tls_ca_bundle() must be
+ * called twice for the same reference. */
+tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle);
 
 tls_conn_t *open_tls_server(async_t *async,
                             bytestream_1 encrypted_input_stream,

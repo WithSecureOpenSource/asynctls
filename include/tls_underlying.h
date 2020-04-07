@@ -25,7 +25,6 @@ struct tls_conn {
     bool is_client;
     union {
         struct {
-            bool ca_bundle_shared;
             tls_ca_bundle_t *ca_bundle;
             char *alpn_choice;
         } client;
