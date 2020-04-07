@@ -316,6 +316,11 @@ void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
 {
 }
 
+tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
+{
+    return ca_bundle;
+}
+
 static bool read_file(const char *path, CFMutableDataRef data)
 {
     int fd = open(path, O_RDONLY);
