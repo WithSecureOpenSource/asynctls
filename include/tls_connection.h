@@ -122,6 +122,10 @@ void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle);
  * called twice for the same reference. */
 tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle);
 
+/* Return true only if the given CA bundles are operationally
+ * equivalent. */
+bool tls_ca_bundle_equal(tls_ca_bundle_t *a, tls_ca_bundle_t *b);
+
 tls_conn_t *open_tls_server(async_t *async,
                             bytestream_1 encrypted_input_stream,
                             const char *pem_cert_chain_pathname,
