@@ -824,6 +824,11 @@ tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
     return ca_bundle;
 }
 
+bool tls_ca_bundle_equal(tls_ca_bundle_t *a, tls_ca_bundle_t *b)
+{
+    return a == b;
+}
+
 tls_credentials_t *make_tls_credentials(const char *pem_cert_chain_pathname,
                                         const char *pem_priv_key_pathname)
 {

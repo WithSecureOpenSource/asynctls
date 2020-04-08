@@ -321,6 +321,11 @@ tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
     return ca_bundle;
 }
 
+bool tls_ca_bundle_equal(tls_ca_bundle_t *a, tls_ca_bundle_t *b)
+{
+    return a == b;
+}
+
 static bool read_file(const char *path, CFMutableDataRef data)
 {
     int fd = open(path, O_RDONLY);
