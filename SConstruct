@@ -41,9 +41,7 @@ def pkgconfig_builder(env):
     pkgconfig = env.Substfile(
         'lib/pkgconfig/asynctls.pc',
         '#asynctls-%s.pc.in' % env['ARCH'],
-        SUBST_DICT = {
-            '@prefix@': '$PREFIX'
-        }
+        SUBST_DICT={'@prefix@': env['PREFIX']},
     )
     env.Alias(
         'install',
