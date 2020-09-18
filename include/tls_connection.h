@@ -1,7 +1,12 @@
 #ifndef __TLS_CONNECTION__
 #define __TLS_CONNECTION__
 
+#include <async/async.h>
+#include <async/bytestream_1.h>
+
 #include <stdbool.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,11 +47,6 @@ extern "C" {
  *  - tls_set_plain_output_stream()
  *  - tls_get_plain_input_stream()
  */
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <async/async.h>
-#include <async/bytestream_1.h>
 
 typedef struct tls_conn tls_conn_t;
 typedef struct tls_ca_bundle tls_ca_bundle_t;
