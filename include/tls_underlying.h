@@ -26,13 +26,13 @@ struct tls_conn {
     union {
         struct {
             tls_ca_bundle_t *ca_bundle;
-            char *alpn_choice;
         } client;
         struct {
             bool credentials_shared;
             tls_credentials_t *credentials;
         } server;
     };
+    char *alpn_choice;
     tls_conn_state_t state;
     bytestream_1 encrypted_input_stream;
     bytestream_1 plain_output_stream;
