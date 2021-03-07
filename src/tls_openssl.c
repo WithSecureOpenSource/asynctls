@@ -910,8 +910,6 @@ static int server_alpn_cb(SSL *ssl,
                           void *arg)
 {
     tls_credentials_t *credentials = arg;
-    if (!credentials->allowed_protocols)
-        return SSL_TLSEXT_ERR_NOACK;
     list_elem_t *e;
     for (e = list_get_first(credentials->allowed_protocols);
          e;
@@ -978,7 +976,6 @@ void tls_set_protocol_priority(tls_credentials_t *credentials,
     va_end(ap);
     SSL_CTX_set_alpn_select_cb(credentials->ssl_ctx, server_alpn_cb,
                                credentials);
-    return;
 }
 
 void tls_initialize_underlying_client_tech(tls_conn_t *conn)
