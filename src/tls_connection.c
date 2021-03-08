@@ -216,14 +216,13 @@ FSTRACE_DECL(ASYNCTLS_CONN_SET_ALPN, "UID=%64u PROTO=%s");
 void tls_set_alpn_choice(tls_conn_t *conn, char *protocol)
 {
     FSTRACE(ASYNCTLS_CONN_SET_ALPN, conn->uid, protocol);
-    assert(conn->is_client);
-    conn->client.alpn_choice = protocol;
+    assert(!conn->alpn_choice);
+    conn->alpn_choice = protocol;
 }
 
 const char *tls_get_chosen_protocol(tls_conn_t *conn)
 {
-    assert(conn->is_client);
-    return conn->client.alpn_choice;
+    return conn->alpn_choice;
 }
 
 FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_READ,
@@ -314,7 +313,7 @@ static tls_conn_t *make_client(async_t *async,
     conn->server_name = server_hostname;
     conn->is_client = true;
     conn->client.ca_bundle = ca_bundle;
-    conn->client.alpn_choice = NULL;
+    conn->alpn_choice = NULL;
     return conn;
 }
 
@@ -392,6 +391,7 @@ static tls_conn_t *open_server(async_t *async,
     conn->is_client = false;
     conn->server.credentials_shared = shared;
     conn->server.credentials = credentials;
+    conn->alpn_choice = NULL;
     tls_initialize_underlying_server_tech(conn);
     conn->state = TLS_CONN_STATE_HANDSHAKING;
     return conn;
@@ -483,15 +483,11 @@ void tls_close(tls_conn_t *conn)
     }
     tls_free_underlying_resources(conn);
     bytestream_1_close(conn->encrypted_input_stream);
-    if (conn->is_client) {
-        /* client */
+    if (conn->is_client)
         destroy_tls_ca_bundle(conn->client.ca_bundle);
-        fsfree(conn->client.alpn_choice);
-    } else {
-        /* server */
-        if (!conn->server.credentials_shared)
-            destroy_tls_credentials(conn->server.credentials);
-    }
+    else if (!conn->server.credentials_shared)
+        destroy_tls_credentials(conn->server.credentials);
+    fsfree(conn->alpn_choice);
     if (conn->encrypted_output_closed)
         async_wound(conn->async, conn);
     tls_set_conn_state(conn, TLS_CONN_STATE_ZOMBIE);

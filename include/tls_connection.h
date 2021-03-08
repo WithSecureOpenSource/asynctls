@@ -142,6 +142,11 @@ tls_conn_t *adopt_tls_server(async_t *async,
                              tls_credentials_t *credentials,
                              void *underlying_connection);
 
+/* Equivalent to
+ *
+ *   make_tls_credentials_2(pem_cert_chain_pathname,
+ *                          pem_priv_key_pathname,
+ *                          NULL) */
 tls_credentials_t *make_tls_credentials(const char *pem_cert_chain_pathname,
                                         const char *pem_priv_key_pathname);
 
@@ -179,8 +184,7 @@ void tls_unregister_handshake_done_cb(tls_conn_t *conn);
  * server side).
  *
  * To be used only after handshake completion. Otherwise results might
- * be undefined. (See tls_register_handshake_done_cb above).
-*/
+ * be undefined. (See tls_register_handshake_done_cb above). */
 const char *tls_get_server_name(tls_conn_t *conn);
 
 /* This function is used by the client to inform the server (through
@@ -190,13 +194,25 @@ const char *tls_get_server_name(tls_conn_t *conn);
  *
  * Terminate the protocol list with (const char *) NULL.
  *
- * Be sure to call this function before reading from conn's streams.
- */
+ * Be sure to call this function before reading from conn's streams. */
 void tls_allow_protocols(tls_conn_t *conn, const char *protocol, ...);
 
-/* After the successful completion of a handshake, the client can use
- * this function to get the protocol token chosen by the server
- * (through the ALPN extension). NULL is returned if no choice was made.
+/* This function is used by the server to specify a list of supported
+ * protocols in the order of priority. The protocol list is matched
+ * against the list of protocols sent by the client. If the function
+ * is not called for the credentials, the server does not participate
+ * in the ALPN exchange.
+ *
+ * Terminate the protocol list with (const char *) NULL.
+ *
+ * Be sure to call this function before using the credentials . */
+void tls_set_protocol_priority(tls_credentials_t *credentials,
+                               const char *protocol, ...);
+
+/* After a successful completion of a handshake, the client and the
+ * server can use this function to get the protocol token chosen by
+ * the server (through the ALPN extension). NULL is returned if no
+ * choice was made.
  *
  * The returned string is NUL-terminated and stays available for the
  * lifetime of the connection. */

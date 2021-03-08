@@ -73,6 +73,12 @@ struct tls_ca_bundle {
     };
 };
 
+struct tls_credentials {
+    uint64_t uid;
+    SSL_CTX *ssl_ctx;
+    list_t *allowed_protocols;
+};
+
 static tls_ca_bundle_t system_ca_bundle = {
     .bundle_type = CA_BUNDLE_SYSTEM
 };
@@ -655,21 +661,20 @@ static bool verify_server(tls_conn_t *conn)
 static int finish_handshake(tls_conn_t *conn)
 {
     async_execute(conn->async, conn->handshake_done_callback);
-    if (!conn->is_client) {
-        conn->server_name = ssl_get_servername(conn, TLSEXT_NAMETYPE_host_name);
-        tls_set_conn_state(conn, TLS_CONN_STATE_OPEN);
-        return 0;
-    }
-    if (!verify_server(conn))
+    if (!conn->is_client)
+        conn->server_name =
+            ssl_get_servername(conn, TLSEXT_NAMETYPE_host_name);
+    else if (!verify_server(conn))
         return deny_access(conn);
     tls_set_conn_state(conn, TLS_CONN_STATE_OPEN);
     const unsigned char *data;
     unsigned len;
     SSL_get0_alpn_selected(tech(conn)->ssl, &data, &len);
-    if (len)
-        tls_set_alpn_choice(conn,
-                            charstr_dupsubstr((const char *) data,
-                                              (const char *) data + len));
+    if (len) {
+        char *choice = charstr_dupsubstr((const char *) data,
+                                         (const char *) data + len);
+        tls_set_alpn_choice(conn, choice);
+    }
     return 0;
 }
 
@@ -856,12 +861,28 @@ tls_credentials_t *make_tls_credentials_2(const char *pem_cert_chain_pathname,
         SSL_CTX_free(ssl_ctx);
         return NULL;
     }
-    return (tls_credentials_t *) ssl_ctx;
+    tls_credentials_t *credentials = fsalloc(sizeof *credentials);
+    credentials->uid = fstrace_get_unique_id();
+    credentials->ssl_ctx = ssl_ctx;
+    credentials->allowed_protocols = NULL;
+    return credentials;
+}
+
+static void clear_server_protocols(tls_credentials_t *credentials)
+{
+    list_t *protocols = credentials->allowed_protocols;
+    if (protocols) {
+        list_foreach(protocols, (void *) fsfree, NULL);
+        destroy_list(protocols);
+    }
+    credentials->allowed_protocols = NULL;
 }
 
 void destroy_tls_credentials(tls_credentials_t *credentials)
 {
-    SSL_CTX_free((SSL_CTX *) credentials);
+    clear_server_protocols(credentials);
+    SSL_CTX_free(credentials->ssl_ctx);
+    fsfree(credentials);
 }
 
 static void initialize_underlying_tech(tls_conn_t *conn, SSL *ssl)
@@ -881,11 +902,42 @@ static void initialize_underlying_tech(tls_conn_t *conn, SSL *ssl)
     SSL_ctrl(ssl, SSL_CTRL_MODE, SSL_MODE_AUTO_RETRY, NULL);
 }
 
+static int server_alpn_cb(SSL *ssl,
+                          const unsigned char **out,
+                          unsigned char *outlen,
+                          const unsigned char *in,
+                          unsigned inlen,
+                          void *arg)
+{
+    tls_credentials_t *credentials = arg;
+    list_elem_t *e;
+    for (e = list_get_first(credentials->allowed_protocols);
+         e;
+         e = list_next(e)) {
+        const char *protocol = list_elem_get_value(e);
+        unsigned cursor = 0;
+        while (cursor < inlen) {
+            unsigned proto_len = in[cursor++];
+            if (cursor + proto_len > inlen)
+                return SSL_TLSEXT_ERR_NOACK; /* format violation */
+            if (proto_len == strlen(protocol) &&
+                !memcmp(protocol, in + cursor, proto_len)) {
+                *out = in + cursor;
+                *outlen = proto_len;
+                return SSL_TLSEXT_ERR_OK;
+            }
+            cursor += proto_len;
+        }
+    }
+    return SSL_TLSEXT_ERR_NOACK;
+}
 
+FSTRACE_DECL(ASYNCTLS_CONN_ALLOW_PROTOCOLS, "UID=%64u");
 FSTRACE_DECL(ASYNCTLS_CONN_ADD_ALPN, "UID=%64u PROTO=%s");
 
 void tls_allow_protocols(tls_conn_t *conn, const char *protocol, ...)
 {
+    FSTRACE(ASYNCTLS_CONN_ALLOW_PROTOCOLS, conn->uid);
     assert(conn->is_client);
     unsigned char buffer[1000];
     unsigned cursor = 0;
@@ -903,6 +955,27 @@ void tls_allow_protocols(tls_conn_t *conn, const char *protocol, ...)
     }
     va_end(ap);
     SSL_set_alpn_protos(tech(conn)->ssl, buffer, cursor);
+}
+
+FSTRACE_DECL(ASYNCTLS_CREDS_SET_PROTOCOLS, "UID=%64u");
+FSTRACE_DECL(ASYNCTLS_CREDS_ADD_ALPN, "UID=%64u PROTO=%s");
+
+void tls_set_protocol_priority(tls_credentials_t *credentials,
+                               const char *protocol, ...)
+{
+    FSTRACE(ASYNCTLS_CREDS_SET_PROTOCOLS, credentials->uid);
+    clear_server_protocols(credentials);
+    credentials->allowed_protocols = make_list();
+    va_list ap;
+    va_start(ap, protocol);
+    while (protocol) {
+        FSTRACE(ASYNCTLS_CREDS_ADD_ALPN, credentials->uid, protocol);
+        list_append(credentials->allowed_protocols, charstr_dupstr(protocol));
+        protocol = va_arg(ap, const char *);
+    }
+    va_end(ap);
+    SSL_CTX_set_alpn_select_cb(credentials->ssl_ctx, server_alpn_cb,
+                               credentials);
 }
 
 void tls_initialize_underlying_client_tech(tls_conn_t *conn)
@@ -945,7 +1018,7 @@ void tls_initialize_underlying_client_tech(tls_conn_t *conn)
 
 void tls_initialize_underlying_server_tech(tls_conn_t *conn)
 {
-    SSL *ssl = SSL_new((SSL_CTX *) conn->server.credentials);
+    SSL *ssl = SSL_new(conn->server.credentials->ssl_ctx);
     initialize_underlying_tech(conn, ssl);
     ERR_clear_error();
     int ret = SSL_accept(ssl);
