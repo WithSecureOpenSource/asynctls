@@ -432,8 +432,11 @@ ssize_t tls_read_plain_input(tls_conn_t *conn, void *buf, size_t count)
                     return -1;
                 break;
             case SSL_ERROR_SYSCALL:
-                if (errno == 0)
+                if (errno == 0) {
+                    if (conn->suppress_ragged_eofs)
+                        return 0;
                     errno = ENODATA;
+                }
                 return -1;
             default:
                 return declare_protocol_error(conn);

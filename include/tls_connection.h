@@ -254,6 +254,10 @@ void tls_register_callback(tls_conn_t *conn, action_1 action);
  */
 void tls_unregister_callback(tls_conn_t *conn);
 
+/* In the case of a ragged EOF, read yields a ENODATA error. This
+ * function makes read return 0 instead. */
+void tls_suppress_ragged_eofs(tls_conn_t *conn);
+
 #ifdef __cplusplus
 }
 #endif
