@@ -3,8 +3,10 @@
 #include <ctype.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
@@ -762,11 +764,13 @@ static blob_t *serialize_cert(X509 *cert)
     return blob;
 }
 
-static void append_certs_from(const char *pem_file_pathname, list_t *list)
+static void append_certs_from(int fd, list_t *list)
 {
-    FILE *f = fopen(pem_file_pathname, "r");
-    if (!f)
+    FILE *f = fdopen(fd, "r");
+    if (!f) {
+        close(fd);
         return;
+    }
     for (;;) {
         X509 *cert = PEM_read_X509(f, NULL, NULL, NULL);
         if (!cert)
@@ -784,17 +788,22 @@ tls_ca_bundle_t *make_pinned_tls_ca_bundle(const char *pem_file_pathname,
     ca_bundle->bundle_type = CA_BUNDLE_PINNED;
     ca_bundle->ref_count = 1;
     ca_bundle->pinned.leaf_certificates = make_list();
-    if (pem_file_pathname)
-        append_certs_from(pem_file_pathname,
-                          ca_bundle->pinned.leaf_certificates);
+    if (pem_file_pathname) {
+        int fd = open(pem_file_pathname, O_RDONLY);
+        if (fd >= 0)
+            append_certs_from(fd,
+                              ca_bundle->pinned.leaf_certificates);
+    }
     else if (pem_dir_pathname) {
        DIR *dir = opendir(pem_dir_pathname);
        for (;;) {
            struct dirent *entity = readdir(dir);
            if (!entity)
                break;
-           append_certs_from(entity->d_name,
-                             ca_bundle->pinned.leaf_certificates);
+           int fd = openat(dirfd(dir), entity->d_name, O_RDONLY);
+           if (fd >= 0)
+               append_certs_from(fd,
+                                 ca_bundle->pinned.leaf_certificates);
        }
        closedir(dir);
     }
