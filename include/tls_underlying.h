@@ -42,6 +42,7 @@ struct tls_conn {
     bool plain_input_closed;
     bool encrypted_output_closed;
     void *underlying_tech;
+    bool suppress_ragged_eofs;
 };
 
 /*

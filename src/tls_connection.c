@@ -301,6 +301,7 @@ static tls_conn_t *open_connection(async_t *async,
     conn->encrypted_output_callback = NULL_ACTION_1;
     conn->encrypted_output_closed = false;
     conn->plain_input_closed = false;
+    conn->suppress_ragged_eofs = false;
     return conn;
 }
 
@@ -561,4 +562,9 @@ void tls_unregister_handshake_done_cb(tls_conn_t *conn)
 {
     FSTRACE(ASYNCTLS_CONN_UNREGISTER_HANDSHAKE, conn->uid);
     conn->handshake_done_callback = NULL_ACTION_1;
+}
+
+void tls_suppress_ragged_eofs(tls_conn_t *conn)
+{
+    conn->suppress_ragged_eofs = true;
 }
