@@ -264,6 +264,7 @@ int tls_perform_handshake(tls_conn_t *conn)
         case errSSLWouldBlock:
             errno = EAGAIN;
             return -1;
+        case errSSLClosedAbort:
         case errSSLUnknownRootCert:
         case errSSLNoRootCert:
         case errSSLCertExpired:
@@ -437,6 +438,8 @@ static OSStatus _read_func(tls_conn_t *conn, void *data, size_t *dataLength)
             return errSSLWouldBlock;
         return errSecIO;
     }
+    if (n == 0)
+        return errSSLClosedGraceful;
     tls_notify_application(conn);
     if (*dataLength == n)
         return errSecSuccess;
