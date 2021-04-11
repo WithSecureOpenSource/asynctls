@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -48,14 +49,22 @@ def main():
         server.kill()
         server.wait()
         return False
-    if args.use_openssl_client:
-        client = start_openssl_client(pem_file_path, hostname, port)
+    if args.client == "tcp":
+        try:
+            socket.create_connection(("127.0.0.1", port), timeout=1)
+            client_returncode = 0
+        except Exception:
+            client_returncode = 1
+        client_output = ""
     else:
-        client = start_client(args.arch, pem_file_path, hostname, port)
-
-    time_for_client_to_finish = 5
-    verify_process_finishes(client, time_for_client_to_finish)
-    client_output, _ = client.communicate()
+        if args.client == "openssl":
+            client = start_openssl_client(pem_file_path, hostname, port)
+        else:
+            client = start_client(args.arch, pem_file_path, hostname, port)
+        time_for_client_to_finish = 5
+        verify_process_finishes(client, time_for_client_to_finish)
+        client_output, _ = client.communicate()
+        client_returncode = args.client_returncode
 
     time_for_server_to_finish = 1
     verify_process_finishes(server, time_for_server_to_finish)
@@ -68,12 +77,10 @@ def main():
     print(client_output)
     print("")
 
-    server_successful = server.returncode == 0
-    client_successful = client.returncode == 0
+    server_successful = server.returncode == args.server_returncode
+    client_successful = client_returncode == args.client_returncode
 
-    test_successful = server_successful and client_successful
-
-    return test_successful == args.expected_result
+    return server_successful and client_successful
 
 
 def verify_process_finishes(p, initial_wait_time):
@@ -137,17 +144,11 @@ def start_openssl_client(pem_file, hostname, port):
     )
 
 
-def expected_result_to_bool(v):
-    if v.lower() not in ["pass", "fail"]:
-        raise ValueError(
-            "%s not valid. Possible values are ('pass', 'fail')" % v
-        )
-    return v.lower() == "pass"
-
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Run communication test")
-    parser.add_argument("--use-openssl-client", action="store_true")
+    parser.add_argument(
+        "--client", choices=("tcp", "openssl", "tlstest"), default="tlstest"
+    ),
     parser.add_argument("arch")
     parser.add_argument(
         "subhostname", help="subdomain under .localhost to test against"
@@ -158,9 +159,16 @@ def parse_arguments():
         + " Can contain wildcards.",
     )
     parser.add_argument(
-        "expected_result",
-        type=expected_result_to_bool,
-        help="Expected result of the test",
+        "client_returncode",
+        type=int,
+        default=0,
+        help="Expected client return code",
+    )
+    parser.add_argument(
+        "server_returncode",
+        type=int,
+        default=0,
+        help="Expected server return code",
     )
 
     args = parser.parse_args()
