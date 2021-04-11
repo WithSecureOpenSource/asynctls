@@ -7,14 +7,6 @@ import sys
 import time
 
 
-def get_arch():
-    uname = os.uname()
-    if uname[0] == "Darwin":
-        return "darwin"
-    assert uname[0] == "Linux"
-    return "linux64"
-
-
 def wait_for_server(port, timeout):
     timeout *= 10
     while timeout > 0:
@@ -32,11 +24,11 @@ def wait_for_server(port, timeout):
 
 
 def main():
-    certificate_folder = os.path.join("stage", get_arch(), "build", "test")
+    args = parse_arguments()
+
+    certificate_folder = os.path.join("stage", args.arch, "build", "test")
     pem_file_path = os.path.join(certificate_folder, "test.pem")
     key_file_path = os.path.join(certificate_folder, "test.key")
-
-    args = parse_arguments()
 
     print(repr(args.certificate_subdomain))
 
@@ -51,7 +43,7 @@ def main():
     hostname = args.subhostname + ".localhost"
     port = 12345
 
-    server = start_server(pem_file_path, key_file_path)
+    server = start_server(args.arch, pem_file_path, key_file_path)
     if not wait_for_server(port, 5):
         server.kill()
         server.wait()
@@ -59,7 +51,7 @@ def main():
     if args.use_openssl_client:
         client = start_openssl_client(pem_file_path, hostname, port)
     else:
-        client = start_client(pem_file_path, hostname, port)
+        client = start_client(args.arch, pem_file_path, hostname, port)
 
     time_for_client_to_finish = 5
     verify_process_finishes(client, time_for_client_to_finish)
@@ -99,10 +91,10 @@ def verify_process_finishes(p, initial_wait_time):
     p.wait()
 
 
-def start_server(pem_file, key_file):
+def start_server(arch, pem_file, key_file):
     return subprocess.Popen(
         [
-            os.path.join("stage", get_arch(), "build", "test", "tlstestserver"),
+            os.path.join("stage", arch, "build", "test", "tlstestserver"),
             pem_file,
             key_file,
         ],
@@ -111,10 +103,10 @@ def start_server(pem_file, key_file):
     )
 
 
-def start_client(pem_file, hostname, port):
+def start_client(arch, pem_file, hostname, port):
     return subprocess.Popen(
         [
-            "stage/linux64/build/test/tlstest",
+            "stage/{}/build/test/tlstest".format(arch),
             "--file",
             pem_file,
             "127.0.0.1",
@@ -156,6 +148,7 @@ def expected_result_to_bool(v):
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Run communication test")
     parser.add_argument("--use-openssl-client", action="store_true")
+    parser.add_argument("arch")
     parser.add_argument(
         "subhostname", help="subdomain under .localhost to test against"
     )
