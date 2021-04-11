@@ -6,6 +6,13 @@ flags=(
     -D_FILE_OFFSET_BITS=64
 )
 
+case $(uname -s) in
+    Darwin)
+        flags+=(--ccopt -mmacosx-version-min=10.13);;
+    *)
+        ;;
+esac
+
 libconfig_flags=$(@CONFIG_PARSER@ |
     tr ' ' '\n' |
     grep '^-[DI]')
