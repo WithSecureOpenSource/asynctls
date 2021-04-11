@@ -6,12 +6,14 @@ import subprocess
 import sys
 import time
 
+
 def get_arch():
     uname = os.uname()
     if uname[0] == "Darwin":
         return "darwin"
     assert uname[0] == "Linux"
     return "linux64"
+
 
 def wait_for_server(port, timeout):
     timeout *= 10
@@ -25,20 +27,23 @@ def wait_for_server(port, timeout):
         timeout -= 1
     return False
 
+
 # This script expects to be executed so that pwd is the root of the repo
+
 
 def main():
     certificate_folder = os.path.join("stage", get_arch(), "build", "test")
-    pem_file_path = os.path.join(certificate_folder, 'test.pem')
-    key_file_path = os.path.join(certificate_folder, 'test.key')
+    pem_file_path = os.path.join(certificate_folder, "test.pem")
+    key_file_path = os.path.join(certificate_folder, "test.key")
 
     args = parse_arguments()
 
     print(repr(args.certificate_subdomain))
 
     try:
-        generate_certificate(args.certificate_subdomain,
-            pem_file_path, key_file_path)
+        generate_certificate(
+            args.certificate_subdomain, pem_file_path, key_file_path
+        )
     except subprocess.CalledProcessError:
         print("Failed to create certificates")
         return False
@@ -66,10 +71,10 @@ def main():
 
     print("Server output:")
     print(server_output)
-    print('')
+    print("")
     print("Client output:")
     print(client_output)
-    print('')
+    print("")
 
     server_successful = server.returncode == 0
     client_successful = client.returncode == 0
@@ -77,6 +82,7 @@ def main():
     test_successful = server_successful and client_successful
 
     return test_successful == args.expected_result
+
 
 def verify_process_finishes(p, initial_wait_time):
     def wait_for_process_to_end(seconds):
@@ -92,28 +98,33 @@ def verify_process_finishes(p, initial_wait_time):
     p.kill()
     p.wait()
 
+
 def start_server(pem_file, key_file):
     return subprocess.Popen(
         [
             os.path.join("stage", get_arch(), "build", "test", "tlstestserver"),
             pem_file,
-            key_file
+            key_file,
         ],
         stderr=subprocess.STDOUT,
-        stdout=subprocess.PIPE)
+        stdout=subprocess.PIPE,
+    )
+
 
 def start_client(pem_file, hostname, port):
     return subprocess.Popen(
         [
-            'stage/linux64/build/test/tlstest',
-            '--file',
+            "stage/linux64/build/test/tlstest",
+            "--file",
             pem_file,
             "127.0.0.1",
             str(port),
             hostname,
         ],
         stderr=subprocess.STDOUT,
-        stdout=subprocess.PIPE)
+        stdout=subprocess.PIPE,
+    )
+
 
 def start_openssl_client(pem_file, hostname, port):
     return subprocess.Popen(
@@ -135,38 +146,59 @@ def start_openssl_client(pem_file, hostname, port):
 
 
 def expected_result_to_bool(v):
-    if v.lower() not in ['pass', 'fail']:
-        raise ValueError("%s not valid. Possible values are ('pass', 'fail')" % v)
-    return v.lower() == 'pass'
+    if v.lower() not in ["pass", "fail"]:
+        raise ValueError(
+            "%s not valid. Possible values are ('pass', 'fail')" % v
+        )
+    return v.lower() == "pass"
+
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(
-        description='Run communication test')
+    parser = argparse.ArgumentParser(description="Run communication test")
     parser.add_argument("--use-openssl-client", action="store_true")
     parser.add_argument(
-        'subhostname',
-        help='subdomain under .localhost to test against')
+        "subhostname", help="subdomain under .localhost to test against"
+    )
     parser.add_argument(
-        'certificate_subdomain',
-        help='subdomain under .localhost used for certificate.' +
-             ' Can contain wildcards.')
+        "certificate_subdomain",
+        help="subdomain under .localhost used for certificate."
+        + " Can contain wildcards.",
+    )
     parser.add_argument(
-        'expected_result',
+        "expected_result",
         type=expected_result_to_bool,
-        help='Expected result of the test')
+        help="Expected result of the test",
+    )
 
     args = parser.parse_args()
 
     return args
 
+
 def generate_certificate(certificate_subdomain, pem_file, key_file):
     domain_name = "/CN=" + certificate_subdomain + ".localhost"
-    subprocess.check_call([
-        'openssl', 'req', '-x509', '-newkey', 'rsa:4096',
-        '-sha256', '-nodes', '-keyout', key_file, '-out', pem_file,
-        '-subj', domain_name, '-days', str(3650)])
+    subprocess.check_call(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:4096",
+            "-sha256",
+            "-nodes",
+            "-keyout",
+            key_file,
+            "-out",
+            pem_file,
+            "-subj",
+            domain_name,
+            "-days",
+            str(3650),
+        ]
+    )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_passed = main()
     print("Test " + ("passed" if test_passed else "failed"))
     return_code = 0 if test_passed else 1
