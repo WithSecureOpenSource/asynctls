@@ -3,35 +3,37 @@
 set -ex
 
 test-hostname-verification() {
-    test/tlscommunicationtest.py test test pass
-    test/tlscommunicationtest.py test '*' fail
-    test/tlscommunicationtest.py test 'te*' fail
-    test/tlscommunicationtest.py test '*st' fail
-    test/tlscommunicationtest.py test 'test*' fail
-    test/tlscommunicationtest.py test '*test' fail
-    test/tlscommunicationtest.py test 't*st' fail
-    test/tlscommunicationtest.py test 'te*st' fail
-    test/tlscommunicationtest.py test 't*s*' fail
-    test/tlscommunicationtest.py test.sub test.sub pass
-    test/tlscommunicationtest.py test.sub '*.sub' pass
-    test/tlscommunicationtest.py test.sub '*' fail
-    test/tlscommunicationtest.py test.sub '*.*' fail
-    test/tlscommunicationtest.py test.sub 'te*.sub' pass
-    test/tlscommunicationtest.py test.sub '*st.sub' pass
-    test/tlscommunicationtest.py test.sub 'test*.sub' pass
-    test/tlscommunicationtest.py test.sub '*test.sub' pass
-    test/tlscommunicationtest.py test.sub 't*st.sub' fail
-    test/tlscommunicationtest.py test.sub 'te*st.sub' fail
-    test/tlscommunicationtest.py test.sub 't*s*.sub' fail
-    test/tlscommunicationtest.py test.sub invalid.sub fail
-    test/tlscommunicationtest.py test.sub 'invalid.*' fail
-    test/tlscommunicationtest.py TEST.SUB test.sub pass
-    test/tlscommunicationtest.py test tes fail
-    test/tlscommunicationtest.py test testa fail
+    local arch=$1
+    test/tlscommunicationtest.py "$arch" test test pass
+    test/tlscommunicationtest.py "$arch" test '*' fail
+    test/tlscommunicationtest.py "$arch" test 'te*' fail
+    test/tlscommunicationtest.py "$arch" test '*st' fail
+    test/tlscommunicationtest.py "$arch" test 'test*' fail
+    test/tlscommunicationtest.py "$arch" test '*test' fail
+    test/tlscommunicationtest.py "$arch" test 't*st' fail
+    test/tlscommunicationtest.py "$arch" test 'te*st' fail
+    test/tlscommunicationtest.py "$arch" test 't*s*' fail
+    test/tlscommunicationtest.py "$arch" test.sub test.sub pass
+    test/tlscommunicationtest.py "$arch" test.sub '*.sub' pass
+    test/tlscommunicationtest.py "$arch" test.sub '*' fail
+    test/tlscommunicationtest.py "$arch" test.sub '*.*' fail
+    test/tlscommunicationtest.py "$arch" test.sub 'te*.sub' pass
+    test/tlscommunicationtest.py "$arch" test.sub '*st.sub' pass
+    test/tlscommunicationtest.py "$arch" test.sub 'test*.sub' pass
+    test/tlscommunicationtest.py "$arch" test.sub '*test.sub' pass
+    test/tlscommunicationtest.py "$arch" test.sub 't*st.sub' fail
+    test/tlscommunicationtest.py "$arch" test.sub 'te*st.sub' fail
+    test/tlscommunicationtest.py "$arch" test.sub 't*s*.sub' fail
+    test/tlscommunicationtest.py "$arch" test.sub invalid.sub fail
+    test/tlscommunicationtest.py "$arch" test.sub 'invalid.*' fail
+    test/tlscommunicationtest.py "$arch" TEST.SUB test.sub pass
+    test/tlscommunicationtest.py "$arch" test tes fail
+    test/tlscommunicationtest.py "$arch" test testa fail
 }
 
 test-server() {
-    test/tlscommunicationtest.py --use-openssl-client test.foo '*.foo' pass
+    local arch=$1
+    test/tlscommunicationtest.py --use-openssl-client "$arch" test.foo '*.foo' pass
 }
 
 test-fstrace() {
@@ -53,12 +55,12 @@ main() {
     case "$(uname)" in
         Linux)
             test-fstrace linux64
-            test-hostname-verification
-            test-server
+            test-hostname-verification linux64
+            test-server linux64
             ;;
         Darwin)
             test-fstrace darwin
-            test-server
+            test-server darwin
             ;;
         *)
             echo "$0: Unknown OS architecture: $os" >&2
