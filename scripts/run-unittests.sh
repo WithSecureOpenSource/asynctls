@@ -43,7 +43,7 @@ realpath () {
     if [ -x "/bin/realpath" ]; then
         /bin/realpath "$@"
     else
-        python -c "import os.path, sys; print os.path.realpath(sys.argv[1])" \
+        python -c "import os.path, sys; print(os.path.realpath(sys.argv[1]))" \
                "$1"
     fi
 }
