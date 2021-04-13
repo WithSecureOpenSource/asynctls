@@ -13,6 +13,10 @@
 #include <async/tcp_connection.h>
 #include <fstrace.h>
 
+#ifndef ENODATA
+#define ENODATA ECONNABORTED
+#endif
+
 typedef struct {
     async_t *async;
     tcp_server_t *server;

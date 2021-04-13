@@ -437,7 +437,11 @@ ssize_t tls_read_plain_input(tls_conn_t *conn, void *buf, size_t count)
                 if (errno == 0) {
                     if (conn->suppress_ragged_eofs)
                         return 0;
+#ifdef ENODATA
                     errno = ENODATA;
+#else
+                    errno = ECONNABORTED;
+#endif
                 }
                 return -1;
             default:
