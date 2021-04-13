@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <netinet/in.h>
 #include <assert.h>
 #include <fsdyn/fsalloc.h>
 #include <async/async.h>

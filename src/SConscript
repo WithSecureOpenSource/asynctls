@@ -13,13 +13,13 @@ env['CPPPATH'] = [
 
 env.ParseConfig(env['CONFIG_PARSER'])
 
-if env['ARCH'] in [ 'linux32', 'linux64' ]:
+if env['ARCH'] == 'darwin':
     env.StaticLibrary('asynctls',
                       [ 'tls_connection.c',
-                        'tls_openssl.c',
+                        'tls_securetransport.c',
                         'asynctls_version.c' ])
 else:
     env.StaticLibrary('asynctls',
                       [ 'tls_connection.c',
-                        'tls_securetransport.c',
+                        'tls_openssl.c',
                         'asynctls_version.c' ])
