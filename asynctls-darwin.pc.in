@@ -1,8 +1,0 @@
-Name: asynctls
-Description:
-Version: 1.0
-Requires:
-Requires.private: async, fsdyn, fstrace
-Cflags: -I@prefix@/include
-Libs: -L@prefix@/lib -lasynctls
-Libs.private: -Wl,-framework,Security -Wl,-framework,CoreServices

@@ -5,4 +5,4 @@ Requires:
 Requires.private: async, fsdyn, fstrace, openssl
 Cflags: -I@prefix@/include
 Libs: -L@prefix@/lib -lasynctls
-Libs.private:
+Libs.private: @libs_private@

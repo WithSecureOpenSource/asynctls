@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -ex
 
@@ -53,15 +53,30 @@ realpath () {
 
 main() {
     cd "$(dirname "$(realpath "$0")")/.."
-    case "$(uname)" in
-        Linux)
+    local os=$(uname -m -s)
+    case $os in
+        "Darwin arm64")
+            test-fstrace darwin
+            test-server darwin
+            ;;
+        "Darwin x86_64")
+            test-fstrace darwin
+            test-server darwin
+            ;;
+        "FreeBSD amd64")
+            test-fstrace freebsd_amd64
+            test-hostname-verification freebsd_amd64
+            test-server freebsd_amd64
+            ;;
+        "Linux x86_64")
             test-fstrace linux64
             test-hostname-verification linux64
             test-server linux64
             ;;
-        Darwin)
-            test-fstrace darwin
-            test-server darwin
+        "OpenBSD amd64")
+            test-fstrace openbsd_amd64
+            test-hostname-verification openbsd_amd64
+            test-server openbsd_amd64
             ;;
         *)
             echo "$0: Unknown OS architecture: $os" >&2

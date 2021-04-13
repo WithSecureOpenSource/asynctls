@@ -1,7 +1,6 @@
 Import('env')
 
-if env['ARCH'] == 'darwin':
-    env['FRAMEWORKS'] += [ 'Security', 'CoreServices' ]
+env['FRAMEWORKS'] += env['TARGET_FRAMEWORKS']
 
 env['CCFLAGS'] += ' -O0'
 
