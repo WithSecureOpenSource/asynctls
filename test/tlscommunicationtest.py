@@ -8,14 +8,11 @@ import sys
 import time
 
 
-def wait_for_server(port, timeout):
+def wait_for_server(pid_file, timeout):
     timeout *= 10
     while timeout > 0:
         time.sleep(0.1)
-        status = subprocess.call(
-            ["lsof", "-iTCP:{}".format(port), "-sTCP:LISTEN", "-n", "-P"]
-        )
-        if status == 0:
+        if os.path.exists(pid_file):
             return True
         timeout -= 1
     return False
@@ -30,6 +27,7 @@ def main():
     certificate_folder = os.path.join("stage", args.arch, "build", "test")
     pem_file_path = os.path.join(certificate_folder, "test.pem")
     key_file_path = os.path.join(certificate_folder, "test.key")
+    pid_file_path = os.path.join(certificate_folder, "pid")
 
     print(repr(args.certificate_subdomain))
 
@@ -44,8 +42,10 @@ def main():
     hostname = args.subhostname + ".localhost"
     port = 12345
 
-    server = start_server(args.arch, pem_file_path, key_file_path)
-    if not wait_for_server(port, 5):
+    if os.path.exists(pid_file_path):
+        os.unlink(pid_file_path)
+    server = start_server(args.arch, pem_file_path, key_file_path, pid_file_path)
+    if not wait_for_server(pid_file_path, 5):
         server.kill()
         server.wait()
         return False
@@ -98,12 +98,13 @@ def verify_process_finishes(p, initial_wait_time):
     p.wait()
 
 
-def start_server(arch, pem_file, key_file):
+def start_server(arch, pem_file, key_file, pid_file):
     return subprocess.Popen(
         [
             os.path.join("stage", arch, "build", "test", "tlstestserver"),
             pem_file,
             key_file,
+            pid_file,
         ],
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,

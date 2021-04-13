@@ -118,14 +118,25 @@ static fstrace_t *set_up_tracing(const char *trace_include,
     return trace;
 }
 
+static bool write_pidfile(const char *pidfile)
+{
+    bool error = false;
+    FILE *fp = fopen(pidfile, "w");
+    if (!fp)
+        return false;
+    error |= fprintf(fp, "%ld", (long) getpid()) < 0;
+    error |= fclose(fp) == EOF;
+    return !error;
+}
+
 static void usage()
 {
-    fprintf(stderr, "Usage: tlstestserver cert-chain-file priv-key-file\n");
+    fprintf(stderr, "Usage: tlstestserver cert-chain-file priv-key-file pidfile\n");
 }
 
 int main(int argc, const char *const *argv)
 {
-    if (argc != 3 || argv[1][0] == '-') {
+    if (argc != 4 || argv[1][0] == '-') {
         usage();
         return EXIT_FAILURE;
     }
@@ -153,7 +164,7 @@ int main(int argc, const char *const *argv)
     g.zombie = g.all_sent = g.all_received = false;
     g.server = tcp_listen(g.async, (struct sockaddr *) &address,
                           sizeof address);
-    if (!g.server) {
+    if (!g.server || !write_pidfile(argv[3])) {
         perror("tlstestserver");
         destroy_async(g.async);
         fstrace_close(trace);
