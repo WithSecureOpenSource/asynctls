@@ -26,7 +26,7 @@ def target_architectures():
 TARGET_DEFINES = {
     'freebsd_amd64': [],
     'linux32': ['_FILE_OFFSET_BITS=64'],
-    'linux64': [],
+    'linux64': ['_FILE_OFFSET_BITS=64'],
     'openbsd_amd64': [],
     'darwin': []
 }
