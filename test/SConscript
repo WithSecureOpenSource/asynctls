@@ -26,10 +26,10 @@ else:
 
 env.Substfile('fstracecheck.in',
               '#fstracecheck.in',
-              SUBST_DICT = {
-                  '@CC@': '$CC',
-                  '@CPPFLAGS@':  '$_CPPDEFFLAGS' + '$_CPPINCFLAGS',
-                  '@FSTRACECHECK@': '$FSTRACECHECK',
+              SUBST_DICT={
+                  '@CC@': env['CC'],
+                  '@CPPFLAGS@':  env['_CPPDEFFLAGS'] + env['_CPPINCFLAGS'],
+                  '@FSTRACECHECK@': env['FSTRACECHECK'],
                   '@SOURCES@': ' '.join(sources),
               }
 )
