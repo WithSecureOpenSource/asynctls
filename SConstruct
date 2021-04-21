@@ -107,7 +107,7 @@ def construct():
         else:
             config_builder = pkgconfig_builder
             config_parser = pkgconfig_parser(prefix)
-            fstracecheck = os.path.join(prefix, 'bin', 'fstracecheck.py')
+            fstracecheck = os.path.join(prefix, 'bin', 'fstracecheck')
 
         target_ccflags = TARGET_FLAGS[target_arch] + ccflags
         target_cppdefines = TARGET_DEFINES[target_arch]
