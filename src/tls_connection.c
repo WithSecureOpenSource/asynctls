@@ -251,8 +251,17 @@ static void encrypted_output_stream_close(void *obj)
     FSTRACE(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_CLOSE, conn->uid);
     assert(!conn->encrypted_output_closed);
     conn->encrypted_output_closed = true;
-    if (conn->state == TLS_CONN_STATE_ZOMBIE)
-        async_wound(conn->async, conn);
+    switch (conn->state) {
+        case TLS_CONN_STATE_SHUT_DOWN_OUTGOING:
+            bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
+            conn->plain_output_stream = drystream;
+            break;
+        case TLS_CONN_STATE_ZOMBIE:
+            async_wound(conn->async, conn);
+            break;
+        default:
+            ;
+    }
 }
 
 FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_REGISTER,
@@ -473,14 +482,7 @@ FSTRACE_DECL(ASYNCTLS_CONN_CLOSE, "UID=%64u");
 void tls_close(tls_conn_t *conn)
 {
     FSTRACE(ASYNCTLS_CONN_CLOSE, conn->uid);
-    switch (conn->state) {
-        case TLS_CONN_STATE_ZOMBIE:
-            return;
-        case TLS_CONN_STATE_SHUT_DOWN_OUTGOING:
-            break;
-        default:
-            bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
-    }
+    assert(conn->state != TLS_CONN_STATE_ZOMBIE);
     tls_free_underlying_resources(conn);
     bytestream_1_close(conn->encrypted_input_stream);
     if (conn->is_client)
@@ -493,16 +495,13 @@ void tls_close(tls_conn_t *conn)
     tls_set_conn_state(conn, TLS_CONN_STATE_ZOMBIE);
 }
 
+FSTRACE_DECL(ASYNCTLS_CONN_CLOSE_ASYNCTLS_ONLY, "UID=%64u");
+
 void tls_close_asynctls_only(tls_conn_t *conn)
 {
-    switch (conn->state) {
-        case TLS_CONN_STATE_ZOMBIE:
-            return;
-        case TLS_CONN_STATE_SHUT_DOWN_OUTGOING:
-            break;
-        default:
-            bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
-    }
+    FSTRACE(ASYNCTLS_CONN_CLOSE_ASYNCTLS_ONLY, conn->uid);
+    assert(conn->state != TLS_CONN_STATE_ZOMBIE);
+    bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
     fsfree(conn->underlying_tech);
     if (conn->encrypted_output_closed)
         async_wound(conn->async, conn);
@@ -530,12 +529,8 @@ FSTRACE_DECL(ASYNCTLS_CONN_SET_OUTPUT, "UID=%64u OUTPUT=%p")
 void tls_set_plain_output_stream(tls_conn_t *conn, bytestream_1 output_stream)
 {
     FSTRACE(ASYNCTLS_CONN_SET_OUTPUT, conn->uid, output_stream.obj);
-    switch (conn->state) {
-        case TLS_CONN_STATE_ZOMBIE:
-            return;
-        default:
-            bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
-    }
+    assert(conn->state != TLS_CONN_STATE_ZOMBIE);
+    bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
     conn->plain_output_stream = output_stream;
     action_1 plain_output_cb = { conn, (act_1) output_notification };
     bytestream_1_register_callback(output_stream, plain_output_cb);

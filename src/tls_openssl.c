@@ -243,6 +243,7 @@ static int ssl_shutdown(tls_conn_t *conn)
 
 static ssize_t relay_encrypted_output(tls_conn_t *conn, void *buf, size_t count)
 {
+    assert(conn->state == TLS_CONN_STATE_OPEN);
     for (;;) {
         int ret = bio_read(conn, buf, count);
         if (ret > 0)
@@ -276,8 +277,10 @@ static ssize_t relay_encrypted_output(tls_conn_t *conn, void *buf, size_t count)
         buffer_consume(buffer, nn);
     }
     tls_set_conn_state(conn, TLS_CONN_STATE_SHUT_DOWN_OUTGOING);
-    bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
-    conn->plain_output_stream = drystream;
+    if (conn->encrypted_output_closed) {
+        bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
+        conn->plain_output_stream = drystream;
+    }
     int ret = ssl_shutdown(conn);
     if (ret < 0)
         return declare_protocol_error(conn);

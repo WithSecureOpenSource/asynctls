@@ -160,8 +160,11 @@ static ssize_t relay_encrypted_output(tls_conn_t *conn, void *buf, size_t count)
         if (n == 0) {
             tls_set_conn_state(conn, TLS_CONN_STATE_SHUT_DOWN_OUTGOING);
             FSTRACE(ASYNCTLS_SECTRAN_RELAY_OUTGOING_EXHAUSTED, conn->uid);
-            bytestream_1_close_relaxed(conn->async, conn->plain_output_stream);
-            conn->plain_output_stream = drystream;
+            if (conn->encrypted_output_closed) {
+                bytestream_1_close_relaxed(conn->async,
+                                           conn->plain_output_stream);
+                conn->plain_output_stream = drystream;
+            }
             return shutting_down_outgoing(conn, buf, count);
         }
         if (n < 0) {
