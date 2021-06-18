@@ -1,12 +1,14 @@
-#include <errno.h>
 #include <assert.h>
-#include <fstrace.h>
-#include <fsdyn/fsalloc.h>
+#include <errno.h>
+
+#include <async/blobstream.h>
 #include <async/drystream.h>
 #include <async/errorstream.h>
-#include <async/blobstream.h>
-#include "tls_underlying.h"
+#include <fsdyn/fsalloc.h>
+#include <fstrace.h>
+
 #include "asynctls_version.h"
+#include "tls_underlying.h"
 
 static ssize_t read_plain_input(tls_conn_t *conn, void *buf, size_t count);
 
@@ -34,8 +36,8 @@ FSTRACE_DECL(ASYNCTLS_CONN_SET_STATE, "UID=%64u OLD=%I NEW=%I")
 
 void tls_set_conn_state(tls_conn_t *conn, tls_conn_state_t state)
 {
-    FSTRACE(ASYNCTLS_CONN_SET_STATE, conn->uid,
-            trace_state, &conn->state, trace_state, &state);
+    FSTRACE(ASYNCTLS_CONN_SET_STATE, conn->uid, trace_state, &conn->state,
+            trace_state, &state);
     conn->state = state;
 }
 
@@ -180,8 +182,8 @@ FSTRACE_DECL(ASYNCTLS_CONN_PLAIN_INPUT_REGISTER, "UID=%64u OBJ=%p ACT=%p");
 static void plain_input_stream_register_callback(void *obj, action_1 action)
 {
     tls_conn_t *conn = obj;
-    FSTRACE(ASYNCTLS_CONN_PLAIN_INPUT_REGISTER,
-            conn->uid, action.obj, action.act);
+    FSTRACE(ASYNCTLS_CONN_PLAIN_INPUT_REGISTER, conn->uid, action.obj,
+            action.act);
     conn->plain_input_callback = action;
 }
 
@@ -255,15 +257,14 @@ static void encrypted_output_stream_close(void *obj)
         async_wound(conn->async, conn);
 }
 
-FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_REGISTER,
-             "UID=%64u OBJ=%p ACT=%p");
+FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_REGISTER, "UID=%64u OBJ=%p ACT=%p");
 
 static void encrypted_output_stream_register_callback(void *obj,
                                                       action_1 action)
 {
     tls_conn_t *conn = obj;
-    FSTRACE(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_REGISTER,
-            conn->uid, action.obj, action.act);
+    FSTRACE(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_REGISTER, conn->uid, action.obj,
+            action.act);
     conn->encrypted_output_callback = action;
     bytestream_1_register_callback(conn->plain_output_stream, action);
 }
@@ -296,8 +297,7 @@ static tls_conn_t *open_connection(async_t *async,
     conn->plain_input_callback = NULL_ACTION_1;
     conn->handshake_done_callback = NULL_ACTION_1;
     action_1 encrypted_input_cb = { conn, (act_1) input_notification };
-    bytestream_1_register_callback(encrypted_input_stream,
-                                   encrypted_input_cb );
+    bytestream_1_register_callback(encrypted_input_stream, encrypted_input_cb);
     conn->encrypted_output_callback = NULL_ACTION_1;
     conn->encrypted_output_closed = false;
     conn->plain_input_closed = false;
@@ -323,8 +323,8 @@ static tls_conn_t *open_client(async_t *async,
                                tls_ca_bundle_t *ca_bundle,
                                const char *server_hostname)
 {
-    tls_conn_t *conn = make_client(async, encrypted_input_stream,
-                                   ca_bundle, server_hostname);
+    tls_conn_t *conn =
+        make_client(async, encrypted_input_stream, ca_bundle, server_hostname);
     tls_initialize_underlying_client_tech(conn);
     conn->state = TLS_CONN_STATE_HANDSHAKING;
     return conn;
@@ -350,8 +350,7 @@ tls_conn_t *adopt_tls_client(async_t *async,
 FSTRACE_DECL(ASYNCTLS_CONN_CLIENT_CREATE,
              "UID=%64u PTR=%p ASYNC=%p INPUT=%p FILE=%s DIR=%s SERVER=%s");
 
-tls_conn_t *open_tls_client(async_t *async,
-                            bytestream_1 encrypted_input_stream,
+tls_conn_t *open_tls_client(async_t *async, bytestream_1 encrypted_input_stream,
                             const char *pem_file_pathname,
                             const char *pem_dir_pathname,
                             const char *server_hostname)
@@ -361,8 +360,8 @@ tls_conn_t *open_tls_client(async_t *async,
                     make_tls_ca_bundle(pem_file_pathname, pem_dir_pathname),
                     server_hostname);
     FSTRACE(ASYNCTLS_CONN_CLIENT_CREATE, conn->uid, conn, async,
-            encrypted_input_stream.obj,
-            pem_file_pathname, pem_dir_pathname, server_hostname);
+            encrypted_input_stream.obj, pem_file_pathname, pem_dir_pathname,
+            server_hostname);
     return conn;
 }
 
@@ -383,8 +382,7 @@ tls_conn_t *open_tls_client_2(async_t *async,
 }
 
 static tls_conn_t *open_server(async_t *async,
-                               bytestream_1 encrypted_input_stream,
-                               bool shared,
+                               bytestream_1 encrypted_input_stream, bool shared,
                                tls_credentials_t *credentials)
 {
     tls_conn_t *conn = open_connection(async, encrypted_input_stream);
@@ -416,8 +414,7 @@ tls_conn_t *adopt_tls_server(async_t *async,
 FSTRACE_DECL(ASYNCTLS_CONN_SERVER_CREATE,
              "UID=%64u PTR=%p ASYNC=%p INPUT=%p FILE=%s DIR=%s");
 
-tls_conn_t *open_tls_server(async_t *async,
-                            bytestream_1 encrypted_input_stream,
+tls_conn_t *open_tls_server(async_t *async, bytestream_1 encrypted_input_stream,
                             const char *pem_cert_chain_pathname,
                             const char *pem_dir_pathname)
 {
@@ -428,8 +425,8 @@ tls_conn_t *open_tls_server(async_t *async,
     tls_conn_t *conn =
         open_server(async, encrypted_input_stream, false, credentials);
     FSTRACE(ASYNCTLS_CONN_SERVER_CREATE, conn->uid, conn, async,
-            encrypted_input_stream.obj,
-            pem_cert_chain_pathname, pem_dir_pathname);
+            encrypted_input_stream.obj, pem_cert_chain_pathname,
+            pem_dir_pathname);
     return conn;
 }
 
@@ -440,8 +437,8 @@ tls_conn_t *open_tls_server_2(async_t *async,
                               bytestream_1 encrypted_input_stream,
                               tls_credentials_t *credentials)
 {
-    tls_conn_t *conn = open_server(async, encrypted_input_stream, true,
-                                   credentials);
+    tls_conn_t *conn =
+        open_server(async, encrypted_input_stream, true, credentials);
     FSTRACE(ASYNCTLS_CONN_SERVER_CREATE2, conn->uid, conn, async,
             encrypted_input_stream.obj, credentials);
     return conn;
@@ -462,8 +459,7 @@ FSTRACE_DECL(ASYNCTLS_CONN_READ_DUMP, "UID=%64u DATA=%B");
 
 ssize_t tls_read(tls_conn_t *conn, void *buf, size_t count)
 {
-    ssize_t n =
-        bytestream_1_read(tls_get_plain_input_stream(conn), buf, count);
+    ssize_t n = bytestream_1_read(tls_get_plain_input_stream(conn), buf, count);
     FSTRACE(ASYNCTLS_CONN_READ, conn->uid, count, n);
     FSTRACE(ASYNCTLS_CONN_READ_DUMP, conn->uid, buf, n);
     return n;
@@ -543,7 +539,8 @@ void tls_set_plain_output_stream(tls_conn_t *conn, bytestream_1 output_stream)
     async_execute(conn->async, plain_output_cb);
 }
 
-const char* tls_get_server_name(tls_conn_t *conn){
+const char *tls_get_server_name(tls_conn_t *conn)
+{
     return conn->server_name;
 }
 
@@ -551,8 +548,8 @@ FSTRACE_DECL(ASYNCTLS_CONN_REGISTER_HANDSHAKE, "UID=%64u OBJ=%p ACT=%p");
 
 void tls_register_handshake_done_cb(tls_conn_t *conn, action_1 cb_action)
 {
-    FSTRACE(ASYNCTLS_CONN_REGISTER_HANDSHAKE,
-            conn->uid, cb_action.obj, cb_action.act);
+    FSTRACE(ASYNCTLS_CONN_REGISTER_HANDSHAKE, conn->uid, cb_action.obj,
+            cb_action.act);
     conn->handshake_done_callback = cb_action;
 }
 
