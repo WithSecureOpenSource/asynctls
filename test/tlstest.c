@@ -1,19 +1,20 @@
-#include <stdio.h>
-#include <string.h>
+#include <assert.h>
 #include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <assert.h>
-#include <fsdyn/fsalloc.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <async/async.h>
-#include <async/stringstream.h>
 #include <async/farewellstream.h>
 #include <async/queuestream.h>
-#include <async/tls_connection.h>
+#include <async/stringstream.h>
 #include <async/tcp_connection.h>
+#include <async/tls_connection.h>
+#include <fsdyn/fsalloc.h>
 #include <fstrace.h>
 
 #ifndef ENODATA
@@ -109,7 +110,7 @@ static void done_maybe(globals_t *g)
     if (!g->all_received)
         return;
     perrmsg("Done!");
-    async_execute(g->async, (action_1){g, (act_1)finish});
+    async_execute(g->async, (action_1) { g, (act_1) finish });
 }
 
 static void probe_plain_input(globals_t *g)
@@ -129,7 +130,7 @@ static void probe_plain_input(globals_t *g)
                 return;
             }
             perror("tlstest");
-            async_execute(g->async, (action_1){g, (act_1)finish});
+            async_execute(g->async, (action_1) { g, (act_1) finish });
             return;
         }
         if (count == 0) {
@@ -144,7 +145,7 @@ static void probe_plain_input(globals_t *g)
 }
 
 static fstrace_t *set_up_tracing(const char *trace_include,
-                           const char *trace_exclude)
+                                 const char *trace_exclude)
 {
     fstrace_t *trace = fstrace_direct(stderr);
     fstrace_declare_globals(trace);
@@ -169,7 +170,7 @@ int main(int argc, const char *const *argv)
         return EXIT_FAILURE;
     }
 
-    //static const char *trace_include = ".";
+    // static const char *trace_include = ".";
     static const char *trace_include = NULL;
     fstrace_t *trace = set_up_tracing(trace_include, NULL);
     if (!trace) {
@@ -197,8 +198,7 @@ int main(int argc, const char *const *argv)
     const char *server_hostname = argv[i++];
     struct sockaddr *address;
     socklen_t addrlen;
-    if (!resolve_address(hostname, port,
-                         &address, &addrlen)) {
+    if (!resolve_address(hostname, port, &address, &addrlen)) {
         fstrace_close(trace);
         return EXIT_FAILURE;
     }
@@ -212,9 +212,9 @@ int main(int argc, const char *const *argv)
         fstrace_close(trace);
         return EXIT_FAILURE;
     }
-    g.tls_conn = open_tls_client(g.async, tcp_get_input_stream(g.tcp_conn),
-                                 pem_file_pathname, pem_dir_pathname,
-                                 server_hostname);
+    g.tls_conn =
+        open_tls_client(g.async, tcp_get_input_stream(g.tcp_conn),
+                        pem_file_pathname, pem_dir_pathname, server_hostname);
     tcp_set_output_stream(g.tcp_conn,
                           tls_get_encrypted_output_stream(g.tls_conn));
     action_1 probe_plain_input_cb = { &g, (act_1) probe_plain_input };
@@ -224,13 +224,11 @@ int main(int argc, const char *const *argv)
     bytestream_1 stream = queuestream_as_bytestream_1(g.output_stream);
     tls_set_plain_output_stream(g.tls_conn, stream);
     char content[1000];
-    size_t len = snprintf(content,
-                          sizeof(content),
+    size_t len = snprintf(content, sizeof(content),
                           "GET / HTTP/1.0\r\n"
                           "Host: %s:%d\r\n"
                           "\r\n",
-                          server_hostname,
-                          port);
+                          server_hostname, port);
     content[len] = '\0';
     bytestream_1 request =
         stringstream_as_bytestream_1(open_stringstream(g.async, content));

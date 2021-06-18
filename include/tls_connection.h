@@ -1,12 +1,12 @@
 #ifndef __TLS_CONNECTION__
 #define __TLS_CONNECTION__
 
-#include <async/async.h>
-#include <async/bytestream_1.h>
-
 #include <stdbool.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
+#include <async/async.h>
+#include <async/bytestream_1.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,8 +60,7 @@ typedef struct tls_credentials tls_credentials_t;
  * TLS connection.
  * If 'pem_file_pathname' and 'pem_dir_pathname' are both NULL, the default
  * pem file and pem directory of the running machine is used. */
-tls_conn_t *open_tls_client(async_t *async,
-                            bytestream_1 encrypted_input_stream,
+tls_conn_t *open_tls_client(async_t *async, bytestream_1 encrypted_input_stream,
                             const char *pem_file_pathname,
                             const char *pem_dir_pathname,
                             const char *server_hostname);
@@ -126,8 +125,7 @@ tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle);
  * equivalent. */
 bool tls_ca_bundle_equal(tls_ca_bundle_t *a, tls_ca_bundle_t *b);
 
-tls_conn_t *open_tls_server(async_t *async,
-                            bytestream_1 encrypted_input_stream,
+tls_conn_t *open_tls_server(async_t *async, bytestream_1 encrypted_input_stream,
                             const char *pem_cert_chain_pathname,
                             const char *pem_priv_key_pathname);
 tls_conn_t *open_tls_server_2(async_t *async,

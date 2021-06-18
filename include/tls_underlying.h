@@ -5,8 +5,9 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
+
 #include "tls_connection.h"
 
 typedef enum {

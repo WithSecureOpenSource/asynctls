@@ -1,17 +1,18 @@
+#include <assert.h>
 #include <errno.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <assert.h>
-#include <fsdyn/fsalloc.h>
+#include <stdbool.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <async/async.h>
-#include <async/stringstream.h>
 #include <async/farewellstream.h>
-#include <async/tls_connection.h>
+#include <async/stringstream.h>
 #include <async/tcp_connection.h>
+#include <async/tls_connection.h>
+#include <fsdyn/fsalloc.h>
 #include <fstrace.h>
 
 #ifndef ENODATA
@@ -94,16 +95,14 @@ static void probe_server(globals_t *g)
     tcp_close_server(g->server);
     g->server = NULL;
     g->tls_conn = open_tls_server(g->async, tcp_get_input_stream(g->tcp_conn),
-                                  g->cert_chain_pathname,
-                                  g->priv_key_pathname);
+                                  g->cert_chain_pathname, g->priv_key_pathname);
     tcp_set_output_stream(g->tcp_conn,
                           tls_get_encrypted_output_stream(g->tls_conn));
     action_1 probe_plain_input_cb = { g, (act_1) probe_plain_input };
     tls_register_callback(g->tls_conn, probe_plain_input_cb);
     async_execute(g->async, probe_plain_input_cb);
-    bytestream_1 response =
-        stringstream_as_bytestream_1(open_stringstream(g->async,
-                                                       "hello there\n"));
+    bytestream_1 response = stringstream_as_bytestream_1(
+        open_stringstream(g->async, "hello there\n"));
     action_1 farewell_cb = { g, (act_1) all_sent };
     farewellstream_t *guard =
         open_relaxed_farewellstream(g->async, response, farewell_cb);
@@ -112,7 +111,7 @@ static void probe_server(globals_t *g)
 }
 
 static fstrace_t *set_up_tracing(const char *trace_include,
-                           const char *trace_exclude)
+                                 const char *trace_exclude)
 {
     fstrace_t *trace = fstrace_direct(stderr);
     fstrace_declare_globals(trace);
@@ -136,7 +135,8 @@ static bool write_pidfile(const char *pidfile)
 
 static void usage()
 {
-    fprintf(stderr, "Usage: tlstestserver cert-chain-file priv-key-file pidfile\n");
+    fprintf(stderr,
+            "Usage: tlstestserver cert-chain-file priv-key-file pidfile\n");
 }
 
 int main(int argc, const char *const *argv)
@@ -146,7 +146,7 @@ int main(int argc, const char *const *argv)
         return EXIT_FAILURE;
     }
 
-    //static const char *trace_include = ".";
+    // static const char *trace_include = ".";
     static const char *trace_include = NULL;
     fstrace_t *trace = set_up_tracing(trace_include, NULL);
     if (!trace) {
@@ -155,20 +155,18 @@ int main(int argc, const char *const *argv)
 
     globals_t g = {
         .cert_chain_pathname = argv[1],
-        .priv_key_pathname = argv[2]
+        .priv_key_pathname = argv[2],
     };
     struct sockaddr_in address = {
         .sin_family = AF_INET,
         .sin_port = htons(12345),
-        .sin_addr = {
-            .s_addr = htonl(INADDR_LOOPBACK)
-        }
+        .sin_addr = { .s_addr = htonl(INADDR_LOOPBACK) },
     };
 
     g.async = make_async();
     g.zombie = g.all_sent = g.all_received = false;
-    g.server = tcp_listen(g.async, (struct sockaddr *) &address,
-                          sizeof address);
+    g.server =
+        tcp_listen(g.async, (struct sockaddr *) &address, sizeof address);
     if (!g.server || !write_pidfile(argv[3])) {
         perror("tlstestserver");
         destroy_async(g.async);

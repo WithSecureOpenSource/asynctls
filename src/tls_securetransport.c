@@ -1,11 +1,13 @@
-#include <errno.h>
-#include <assert.h>
 #include <Security/Security.h>
-#include <fstrace.h>
-#include <fsdyn/fsalloc.h>
+#include <assert.h>
+#include <errno.h>
+
 #include <async/drystream.h>
-#include "tls_underlying.h"
+#include <fsdyn/fsalloc.h>
+#include <fstrace.h>
+
 #include "asynctls_version.h"
+#include "tls_underlying.h"
 
 typedef struct {
     uint8_t bytes[2000];
@@ -60,12 +62,12 @@ FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_WRITE,
              "UID=%64u LENGTH=%z STATUS=%I PROCESSED=%z");
 FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_WRITE_DUMP, "UID=%64u DATA=%B");
 
-static OSStatus ssl_write(tls_conn_t *conn, const void *data,
-                          size_t dataLength, size_t *processed)
+static OSStatus ssl_write(tls_conn_t *conn, const void *data, size_t dataLength,
+                          size_t *processed)
 {
     OSStatus status = SSLWrite(tech(conn)->ssl, data, dataLength, processed);
-    FSTRACE(ASYNCTLS_SECTRAN_SSL_WRITE, conn->uid, dataLength,
-            trace_OSStatus, &status, *processed);
+    FSTRACE(ASYNCTLS_SECTRAN_SSL_WRITE, conn->uid, dataLength, trace_OSStatus,
+            &status, *processed);
     FSTRACE(ASYNCTLS_SECTRAN_SSL_WRITE_DUMP, conn->uid, data, *processed);
     return status;
 }
@@ -149,8 +151,7 @@ static ssize_t relay_encrypted_output(tls_conn_t *conn, void *buf, size_t count)
                     break;
                 default:
                     declare_protocol_error(conn);
-                    FSTRACE(ASYNCTLS_SECTRAN_RELAY_OUTGOING_ABORTED,
-                            conn->uid);
+                    FSTRACE(ASYNCTLS_SECTRAN_RELAY_OUTGOING_ABORTED, conn->uid);
                     return -1;
             }
         }
@@ -212,8 +213,8 @@ static OSStatus ssl_read(tls_conn_t *conn, void *data, size_t dataLength,
                          size_t *processed)
 {
     OSStatus status = SSLRead(tech(conn)->ssl, data, dataLength, processed);
-    FSTRACE(ASYNCTLS_SECTRAN_SSL_READ, conn->uid, dataLength,
-            trace_OSStatus, &status, *processed);
+    FSTRACE(ASYNCTLS_SECTRAN_SSL_READ, conn->uid, dataLength, trace_OSStatus,
+            &status, *processed);
     FSTRACE(ASYNCTLS_SECTRAN_SSL_READ_DUMP, conn->uid, data, *processed);
     return status;
 }
@@ -247,8 +248,7 @@ FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_HANDSHAKE, "UID=%64u STATUS=%I");
 static OSStatus ssl_handshake(tls_conn_t *conn)
 {
     OSStatus status = SSLHandshake(tech(conn)->ssl);
-    FSTRACE(ASYNCTLS_SECTRAN_SSL_HANDSHAKE, conn->uid,
-            trace_OSStatus, &status);
+    FSTRACE(ASYNCTLS_SECTRAN_SSL_HANDSHAKE, conn->uid, trace_OSStatus, &status);
     return status;
 }
 
@@ -286,8 +286,7 @@ tls_ca_bundle_t *make_tls_ca_bundle(const char *pem_file_pathname,
 }
 
 /* A unique sentinel value != NULL. */
-tls_ca_bundle_t *TLS_SYSTEM_CA_BUNDLE =
-    (tls_ca_bundle_t *) make_tls_ca_bundle;
+tls_ca_bundle_t *TLS_SYSTEM_CA_BUNDLE = (tls_ca_bundle_t *) make_tls_ca_bundle;
 
 static bool accept_anything(void *dummy)
 {
@@ -313,9 +312,7 @@ tls_ca_bundle_t *make_pinned_tls_ca_bundle(const char *pem_file_pathname,
     assert(false);
 }
 
-void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
-{
-}
+void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle) {}
 
 tls_ca_bundle_t *share_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
 {
@@ -457,8 +454,8 @@ static OSStatus read_func(SSLConnectionRef connection, void *data,
     tls_conn_t *conn = (tls_conn_t *) connection;
     size_t size = *dataLength;
     OSStatus status = _read_func(conn, data, dataLength);
-    FSTRACE(ASYNCTLS_SECTRAN_READ_FUNC, conn->uid, size,
-            trace_OSStatus, &status, *dataLength);
+    FSTRACE(ASYNCTLS_SECTRAN_READ_FUNC, conn->uid, size, trace_OSStatus,
+            &status, *dataLength);
     FSTRACE(ASYNCTLS_SECTRAN_READ_FUNC_DUMP, conn->uid, data, *dataLength);
     return status;
 }
@@ -496,8 +493,8 @@ static OSStatus write_func(SSLConnectionRef connection, const void *data,
     tls_conn_t *conn = (tls_conn_t *) connection;
     size_t size = *dataLength;
     OSStatus status = _write_func(conn, data, dataLength);
-    FSTRACE(ASYNCTLS_SECTRAN_WRITE_FUNC, conn->uid, size,
-            trace_OSStatus, &status, *dataLength);
+    FSTRACE(ASYNCTLS_SECTRAN_WRITE_FUNC, conn->uid, size, trace_OSStatus,
+            &status, *dataLength);
     FSTRACE(ASYNCTLS_SECTRAN_WRITE_FUNC_DUMP, conn->uid, data, *dataLength);
     return status;
 }

@@ -1,23 +1,25 @@
-#include <sys/types.h>
-#include <dirent.h>
+#include <assert.h>
 #include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <assert.h>
-#include <string.h>
-#include <unistd.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
+#include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
-#include <openssl/pem.h>
-#include <fstrace.h>
-#include <fsdyn/fsalloc.h>
-#include <fsdyn/charstr.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <async/drystream.h>
-#include "tls_underlying.h"
+#include <fsdyn/charstr.h>
+#include <fsdyn/fsalloc.h>
+#include <fstrace.h>
+
 #include "asynctls_version.h"
+#include "tls_underlying.h"
 
 static SSL_CTX *system_ctx = NULL;
 
@@ -40,17 +42,17 @@ typedef struct {
 
 typedef struct {
     SSL *ssl;
-    BIO *encrypted_input_bio;   /* write encrypted data into this bio */
-    BIO *encrypted_output_bio;  /* read encrypted data from this bio */
+    BIO *encrypted_input_bio;  /* write encrypted data into this bio */
+    BIO *encrypted_output_bio; /* read encrypted data from this bio */
     buffer_t plain_output_buffer;
     buffer_t encrypted_input_buffer;
 } openssl_tech_t;
 
 typedef enum {
-    CA_BUNDLE_SYSTEM,           /* use global root certs */
-    CA_BUNDLE_OPENSSL_CONTEXT,  /* use given root certs */
-    CA_BUNDLE_SYNTHETIC,        /* refer to a callback function */
-    CA_BUNDLE_PINNED,           /* accept only given leaf certificates */
+    CA_BUNDLE_SYSTEM,          /* use global root certs */
+    CA_BUNDLE_OPENSSL_CONTEXT, /* use given root certs */
+    CA_BUNDLE_SYNTHETIC,       /* refer to a callback function */
+    CA_BUNDLE_PINNED,          /* accept only given leaf certificates */
 } ca_bundle_type_t;
 
 typedef struct {
@@ -82,7 +84,7 @@ struct tls_credentials {
 };
 
 static tls_ca_bundle_t system_ca_bundle = {
-    .bundle_type = CA_BUNDLE_SYSTEM
+    .bundle_type = CA_BUNDLE_SYSTEM,
 };
 
 tls_ca_bundle_t *TLS_SYSTEM_CA_BUNDLE = &system_ca_bundle;
@@ -135,8 +137,7 @@ static bool bio_should_retry(tls_conn_t *conn)
     return false;
 }
 
-static ssize_t shutting_down_outgoing(tls_conn_t *conn,
-                                      void *buf, size_t count)
+static ssize_t shutting_down_outgoing(tls_conn_t *conn, void *buf, size_t count)
 {
     assert(conn->state == TLS_CONN_STATE_SHUT_DOWN_OUTGOING);
     int ret = bio_read(conn, buf, count);
@@ -210,22 +211,20 @@ static const char *trace_ssl_error(void *perror)
 FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_GET_ERROR,
              "UID=%64u RET=%d ERROR=%I ERRNO=%e");
 
-FSTRACE_DECL(ASYNCTLS_OPENSSL_ERR_GET_ERROR,
-             "UID=%64u ERROR=%s");
+FSTRACE_DECL(ASYNCTLS_OPENSSL_ERR_GET_ERROR, "UID=%64u ERROR=%s");
 
 static int ssl_get_error(tls_conn_t *conn, int ret)
 {
     int error = SSL_get_error(tech(conn)->ssl, ret);
-    FSTRACE(ASYNCTLS_OPENSSL_SSL_GET_ERROR,
-            conn->uid, ret, trace_ssl_error, &error);
+    FSTRACE(ASYNCTLS_OPENSSL_SSL_GET_ERROR, conn->uid, ret, trace_ssl_error,
+            &error);
     switch (error) {
         case SSL_ERROR_SSL:
         case SSL_ERROR_SYSCALL: {
             unsigned long thread_error = ERR_get_error();
             char buf[256];
             ERR_error_string_n(thread_error, buf, sizeof buf);
-            FSTRACE(ASYNCTLS_OPENSSL_ERR_GET_ERROR,
-                    conn->uid, buf);
+            FSTRACE(ASYNCTLS_OPENSSL_ERR_GET_ERROR, conn->uid, buf);
             break;
         }
         default:
@@ -352,10 +351,10 @@ FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_SET_BUF_MEM_EOF_RETURN,
 
 static void bio_set_buf_mem_eof_return(tls_conn_t *conn, long value)
 {
-    FSTRACE(ASYNCTLS_OPENSSL_BIO_SET_BUF_MEM_EOF_RETURN,
-            conn->uid, (int64_t) value);
+    FSTRACE(ASYNCTLS_OPENSSL_BIO_SET_BUF_MEM_EOF_RETURN, conn->uid,
+            (int64_t) value);
     BIO_ctrl(tech(conn)->encrypted_input_bio, BIO_C_SET_BUF_MEM_EOF_RETURN,
-                 value, NULL);
+             value, NULL);
 }
 
 FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_WRITE, "UID=%64u LEN=%d RET=%d");
@@ -415,8 +414,7 @@ ssize_t tls_read_plain_input(tls_conn_t *conn, void *buf, size_t count)
         default:
             abort();
         case TLS_CONN_STATE_OPEN:
-        case TLS_CONN_STATE_SHUT_DOWN_OUTGOING:
-            ;
+        case TLS_CONN_STATE_SHUT_DOWN_OUTGOING:;
     }
     for (;;) {
         int ret = ssl_read(conn, buf, count);
@@ -467,8 +465,8 @@ FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_GET_SERVERNAME, "UID=%64u TYPE=%I NAME=%s");
 static const char *ssl_get_servername(tls_conn_t *conn, int type)
 {
     const char *name = SSL_get_servername(tech(conn)->ssl, type);
-    FSTRACE(ASYNCTLS_OPENSSL_SSL_GET_SERVERNAME,
-            conn->uid, trace_tlsext_type, &type, name);
+    FSTRACE(ASYNCTLS_OPENSSL_SSL_GET_SERVERNAME, conn->uid, trace_tlsext_type,
+            &type, name);
     return name;
 }
 
@@ -621,8 +619,8 @@ FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_GET_VERIFY_RESULT, "UID=%64u RESULT=%I");
 static long ssl_get_verify_result(tls_conn_t *conn)
 {
     long err = SSL_get_verify_result(tech(conn)->ssl);
-    FSTRACE(ASYNCTLS_OPENSSL_SSL_GET_VERIFY_RESULT,
-            conn->uid, trace_x509_err, &err);
+    FSTRACE(ASYNCTLS_OPENSSL_SSL_GET_VERIFY_RESULT, conn->uid, trace_x509_err,
+            &err);
     return err;
 }
 
@@ -671,8 +669,7 @@ static int finish_handshake(tls_conn_t *conn)
 {
     async_execute(conn->async, conn->handshake_done_callback);
     if (!conn->is_client)
-        conn->server_name =
-            ssl_get_servername(conn, TLSEXT_NAMETYPE_host_name);
+        conn->server_name = ssl_get_servername(conn, TLSEXT_NAMETYPE_host_name);
     else if (!verify_server(conn))
         return deny_access(conn);
     tls_set_conn_state(conn, TLS_CONN_STATE_OPEN);
@@ -680,8 +677,8 @@ static int finish_handshake(tls_conn_t *conn)
     unsigned len;
     SSL_get0_alpn_selected(tech(conn)->ssl, &data, &len);
     if (len) {
-        char *choice = charstr_dupsubstr((const char *) data,
-                                         (const char *) data + len);
+        char *choice =
+            charstr_dupsubstr((const char *) data, (const char *) data + len);
         tls_set_alpn_choice(conn, choice);
     }
     return 0;
@@ -714,8 +711,8 @@ static SSL_CTX *make_client_ctx(void)
 {
     openssl_initialize();
     SSL_CTX *ssl_ctx = SSL_CTX_new(TLS_client_method());
-    long options = SSL_CTX_set_options(ssl_ctx,
-                                    SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+    long options =
+        SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
     assert(options & (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3));
     SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_NONE, NULL);
     return ssl_ctx;
@@ -730,7 +727,7 @@ tls_ca_bundle_t *make_tls_ca_bundle(const char *pem_file_pathname,
     SSL_CTX *ssl_ctx = make_client_ctx();
     ret = SSL_CTX_load_verify_locations(ssl_ctx, pem_file_pathname,
                                         pem_dir_pathname);
-    assert(ret == 1);           /* TODO: deal with the error */
+    assert(ret == 1); /* TODO: deal with the error */
     tls_ca_bundle_t *ca_bundle = fsalloc(sizeof *ca_bundle);
     ca_bundle->bundle_type = CA_BUNDLE_OPENSSL_CONTEXT;
     ca_bundle->ref_count = 1;
@@ -778,7 +775,7 @@ static void append_certs_from(int fd, list_t *list)
     for (;;) {
         X509 *cert = PEM_read_X509(f, NULL, NULL, NULL);
         if (!cert)
-            break;          /* EOF or error (can't tell) */
+            break; /* EOF or error (can't tell) */
         list_append(list, serialize_cert(cert));
         X509_free(cert);
     }
@@ -795,21 +792,18 @@ tls_ca_bundle_t *make_pinned_tls_ca_bundle(const char *pem_file_pathname,
     if (pem_file_pathname) {
         int fd = open(pem_file_pathname, O_RDONLY);
         if (fd >= 0)
-            append_certs_from(fd,
-                              ca_bundle->pinned.leaf_certificates);
-    }
-    else if (pem_dir_pathname) {
-       DIR *dir = opendir(pem_dir_pathname);
-       for (;;) {
-           struct dirent *entity = readdir(dir);
-           if (!entity)
-               break;
-           int fd = openat(dirfd(dir), entity->d_name, O_RDONLY);
-           if (fd >= 0)
-               append_certs_from(fd,
-                                 ca_bundle->pinned.leaf_certificates);
-       }
-       closedir(dir);
+            append_certs_from(fd, ca_bundle->pinned.leaf_certificates);
+    } else if (pem_dir_pathname) {
+        DIR *dir = opendir(pem_dir_pathname);
+        for (;;) {
+            struct dirent *entity = readdir(dir);
+            if (!entity)
+                break;
+            int fd = openat(dirfd(dir), entity->d_name, O_RDONLY);
+            if (fd >= 0)
+                append_certs_from(fd, ca_bundle->pinned.leaf_certificates);
+        }
+        closedir(dir);
     }
     return ca_bundle;
 }
@@ -826,8 +820,8 @@ void destroy_tls_ca_bundle(tls_ca_bundle_t *ca_bundle)
             break;
         case CA_BUNDLE_PINNED:
             while (!list_empty(ca_bundle->pinned.leaf_certificates)) {
-                blob_t *blob = (blob_t *)
-                    list_pop_first(ca_bundle->pinned.leaf_certificates);
+                blob_t *blob = (blob_t *) list_pop_first(
+                    ca_bundle->pinned.leaf_certificates);
                 fsfree(blob->content);
                 fsfree(blob);
             }
@@ -854,7 +848,7 @@ tls_credentials_t *make_tls_credentials(const char *pem_cert_chain_pathname,
                                         const char *pem_priv_key_pathname)
 {
     return make_tls_credentials_2(pem_cert_chain_pathname,
-        pem_priv_key_pathname, NULL);
+                                  pem_priv_key_pathname, NULL);
 }
 
 tls_credentials_t *make_tls_credentials_2(const char *pem_cert_chain_pathname,
@@ -863,8 +857,8 @@ tls_credentials_t *make_tls_credentials_2(const char *pem_cert_chain_pathname,
 {
     openssl_initialize();
     SSL_CTX *ssl_ctx = SSL_CTX_new(TLS_server_method());
-    if (1 != SSL_CTX_use_certificate_chain_file(ssl_ctx,
-            pem_cert_chain_pathname)) {
+    if (1 !=
+        SSL_CTX_use_certificate_chain_file(ssl_ctx, pem_cert_chain_pathname)) {
         SSL_CTX_free(ssl_ctx);
         return NULL;
     }
@@ -872,8 +866,9 @@ tls_credentials_t *make_tls_credentials_2(const char *pem_cert_chain_pathname,
         SSL_CTX_set_default_passwd_cb(ssl_ctx, cb_pem_password);
         SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *) password);
     }
-    if (1 != SSL_CTX_use_PrivateKey_file(ssl_ctx, pem_priv_key_pathname,
-        SSL_FILETYPE_PEM)) {
+    if (1 !=
+        SSL_CTX_use_PrivateKey_file(ssl_ctx, pem_priv_key_pathname,
+                                    SSL_FILETYPE_PEM)) {
         SSL_CTX_free(ssl_ctx);
         return NULL;
     }
@@ -908,27 +903,21 @@ static void initialize_underlying_tech(tls_conn_t *conn, SSL *ssl)
     buffer_reset(&tech(conn)->plain_output_buffer);
     buffer_reset(&tech(conn)->encrypted_input_buffer);
     tech(conn)->ssl = ssl;
-    BIO *input_bio = tech(conn)->encrypted_input_bio =
-        BIO_new(BIO_s_mem());
+    BIO *input_bio = tech(conn)->encrypted_input_bio = BIO_new(BIO_s_mem());
     BIO_ctrl(input_bio, BIO_C_SET_BUF_MEM_EOF_RETURN, -1, NULL);
-    BIO *output_bio = tech(conn)->encrypted_output_bio =
-        BIO_new(BIO_s_mem());
+    BIO *output_bio = tech(conn)->encrypted_output_bio = BIO_new(BIO_s_mem());
     BIO_ctrl(output_bio, BIO_C_SET_BUF_MEM_EOF_RETURN, -1, NULL);
     SSL_set_bio(ssl, input_bio, output_bio);
     SSL_ctrl(ssl, SSL_CTRL_MODE, SSL_MODE_AUTO_RETRY, NULL);
 }
 
-static int server_alpn_cb(SSL *ssl,
-                          const unsigned char **out,
-                          unsigned char *outlen,
-                          const unsigned char *in,
-                          unsigned inlen,
-                          void *arg)
+static int server_alpn_cb(SSL *ssl, const unsigned char **out,
+                          unsigned char *outlen, const unsigned char *in,
+                          unsigned inlen, void *arg)
 {
     tls_credentials_t *credentials = arg;
     list_elem_t *e;
-    for (e = list_get_first(credentials->allowed_protocols);
-         e;
+    for (e = list_get_first(credentials->allowed_protocols); e;
          e = list_next(e)) {
         const char *protocol = list_elem_get_value(e);
         unsigned cursor = 0;
@@ -1005,7 +994,7 @@ void tls_initialize_underlying_client_tech(tls_conn_t *conn)
                 openssl_initialize();
                 system_ctx = make_client_ctx();
                 int ret = SSL_CTX_set_default_verify_paths(system_ctx);
-                assert(ret == 1);           /* TODO: deal with the error */
+                assert(ret == 1); /* TODO: deal with the error */
             }
             ctx = system_ctx;
             break;
@@ -1027,8 +1016,8 @@ void tls_initialize_underlying_client_tech(tls_conn_t *conn)
             break;
     }
     initialize_underlying_tech(conn, ssl);
-    SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME,
-        TLSEXT_NAMETYPE_host_name, (char *) conn->server_name);
+    SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name,
+             (char *) conn->server_name);
     SSL_set_connect_state(ssl);
 }
 
@@ -1045,7 +1034,7 @@ void tls_initialize_underlying_server_tech(tls_conn_t *conn)
 
 void tls_adopt_tech(tls_conn_t *conn, void *_ssl)
 {
-    SSL *ssl = (SSL*)_ssl;
+    SSL *ssl = (SSL *) _ssl;
 
     conn->underlying_tech = fsalloc(sizeof(openssl_tech_t));
     buffer_reset(&tech(conn)->plain_output_buffer);
@@ -1053,12 +1042,12 @@ void tls_adopt_tech(tls_conn_t *conn, void *_ssl)
     tech(conn)->ssl = ssl;
 
     tech(conn)->encrypted_input_bio = SSL_get_rbio(ssl);
-    BIO_ctrl(tech(conn)->encrypted_input_bio, BIO_C_SET_BUF_MEM_EOF_RETURN,
-            -1, NULL);
+    BIO_ctrl(tech(conn)->encrypted_input_bio, BIO_C_SET_BUF_MEM_EOF_RETURN, -1,
+             NULL);
 
     tech(conn)->encrypted_output_bio = SSL_get_wbio(ssl);
-    BIO_ctrl(tech(conn)->encrypted_output_bio, BIO_C_SET_BUF_MEM_EOF_RETURN,
-            -1, NULL);
+    BIO_ctrl(tech(conn)->encrypted_output_bio, BIO_C_SET_BUF_MEM_EOF_RETURN, -1,
+             NULL);
 
     SSL_ctrl(ssl, SSL_CTRL_MODE, SSL_MODE_AUTO_RETRY, NULL);
 }
