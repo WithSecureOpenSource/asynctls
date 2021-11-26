@@ -73,6 +73,11 @@ main() {
             test-hostname-verification linux64
             test-server linux64
             ;;
+        "Linux aarch64")
+            test-fstrace linux_arm64
+            test-hostname-verification linux_arm64
+            test-server linux_arm64
+            ;;
         "OpenBSD amd64")
             test-fstrace openbsd_amd64
             test-hostname-verification openbsd_amd64

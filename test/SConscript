@@ -27,10 +27,8 @@ else:
 env.Substfile('fstracecheck.in',
               '#fstracecheck.in',
               SUBST_DICT={
-                  '@CC@': env['CC'],
-                  '@CPPFLAGS@':  env['_CPPDEFFLAGS'] + env['_CPPINCFLAGS'],
-                  '@FSTRACECHECK@': env['FSTRACECHECK'],
-                  '@SOURCES@': ' '.join(sources),
+                  '@ARCHBUILDDIR@': env['ARCHBUILDDIR'],
+                  '@FSTRACECHECK2@': env['FSTRACECHECK2'],
               }
 )
 env.Command('fstracecheck',

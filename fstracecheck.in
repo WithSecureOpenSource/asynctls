@@ -1,15 +1,3 @@
 #!/usr/bin/env bash
 
-flags=(
-    --cc=@CC@
-    -Iinclude
-)
-
-case $(uname -s) in
-    Darwin)
-        flags+=(--ccopt -mmacosx-version-min=10.13);;
-    *)
-        ;;
-esac
-
-exec @FSTRACECHECK@ @CPPFLAGS@ "${flags[@]}" @SOURCES@
+exec "@FSTRACECHECK2@" "@ARCHBUILDDIR@/compile_commands.json"

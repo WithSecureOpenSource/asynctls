@@ -6,10 +6,11 @@ include = env.Install('include/async', ['#include/tls_connection.h'])
 
 lib = env.Install('lib', ['../../src/libasynctls.a'])
 
-env.Alias(
-    'install',
-    env.Install(os.path.join(env['PREFIX'], 'include/async'), include),
-)
-env.Alias('install', env.Install(os.path.join(env['PREFIX'], 'lib'), lib))
+if env["HOST_ARCH"] == env["ARCH"]:
+    env.Alias(
+        'install',
+        env.Install(os.path.join(env['PREFIX'], 'include/async'), include),
+    )
+    env.Alias('install', env.Install(os.path.join(env['PREFIX'], 'lib'), lib))
 
-env['CONFIG_BUILDER'](env)
+env.FSEnvInstallLibConfig()
