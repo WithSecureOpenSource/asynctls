@@ -60,7 +60,7 @@ static const char *trace_OSStatus(void *status);
 
 FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_WRITE,
              "UID=%64u LENGTH=%z STATUS=%I PROCESSED=%z");
-FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_WRITE_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_WRITE_DUMP, "UID=%64u DATA=%A");
 
 static OSStatus ssl_write(tls_conn_t *conn, const void *data, size_t dataLength,
                           size_t *processed)
@@ -207,7 +207,7 @@ ssize_t tls_read_encrypted_output(tls_conn_t *conn, void *buf, size_t count)
 
 FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_READ,
              "UID=%64u LENGTH=%z STATUS=%I PROCESSED=%z");
-FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_READ_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_SECTRAN_SSL_READ_DUMP, "UID=%64u DATA=%A");
 
 static OSStatus ssl_read(tls_conn_t *conn, void *data, size_t dataLength,
                          size_t *processed)
@@ -446,7 +446,7 @@ static OSStatus _read_func(tls_conn_t *conn, void *data, size_t *dataLength)
 
 FSTRACE_DECL(ASYNCTLS_SECTRAN_READ_FUNC,
              "UID=%64u LENGTH=%z STATUS=%I PROCESSED=%z");
-FSTRACE_DECL(ASYNCTLS_SECTRAN_READ_FUNC_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_SECTRAN_READ_FUNC_DUMP, "UID=%64u DATA=%A");
 
 static OSStatus read_func(SSLConnectionRef connection, void *data,
                           size_t *dataLength)
@@ -485,7 +485,7 @@ static OSStatus _write_func(tls_conn_t *conn, const void *data,
 
 FSTRACE_DECL(ASYNCTLS_SECTRAN_WRITE_FUNC,
              "UID=%64u LENGTH=%z STATUS=%I PROCESSED=%z");
-FSTRACE_DECL(ASYNCTLS_SECTRAN_WRITE_FUNC_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_SECTRAN_WRITE_FUNC_DUMP, "UID=%64u DATA=%A");
 
 static OSStatus write_func(SSLConnectionRef connection, const void *data,
                            size_t *dataLength)

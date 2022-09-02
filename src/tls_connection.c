@@ -154,7 +154,7 @@ static ssize_t read_plain_input(tls_conn_t *conn, void *buf, size_t count)
 
 FSTRACE_DECL(ASYNCTLS_CONN_PLAIN_INPUT_READ,
              "UID=%64u WANT=%z GOT=%z ERRNO=%e");
-FSTRACE_DECL(ASYNCTLS_CONN_PLAIN_INPUT_READ_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_CONN_PLAIN_INPUT_READ_DUMP, "UID=%64u DATA=%A");
 
 static ssize_t plain_input_stream_read(void *obj, void *buf, size_t count)
 {
@@ -229,7 +229,7 @@ const char *tls_get_chosen_protocol(tls_conn_t *conn)
 
 FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_READ,
              "UID=%64u WANT=%z GOT=%z ERRNO=%e");
-FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_READ_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_CONN_ENCRYPTED_OUTPUT_READ_DUMP, "UID=%64u DATA=%A");
 
 static ssize_t encrypted_output_stream_read(void *obj, void *buf, size_t count)
 {
@@ -455,7 +455,7 @@ bytestream_1 tls_get_plain_input_stream(tls_conn_t *conn)
 }
 
 FSTRACE_DECL(ASYNCTLS_CONN_READ, "UID=%64u WANT=%z GOT=%z ERRNO=%e");
-FSTRACE_DECL(ASYNCTLS_CONN_READ_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_CONN_READ_DUMP, "UID=%64u DATA=%A");
 
 ssize_t tls_read(tls_conn_t *conn, void *buf, size_t count)
 {
