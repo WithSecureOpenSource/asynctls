@@ -115,7 +115,7 @@ static openssl_tech_t *tech(tls_conn_t *conn)
 }
 
 FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_READ, "UID=%64u LEN=%d RET=%d");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_READ_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_READ_DUMP, "UID=%64u DATA=%A");
 
 static int bio_read(tls_conn_t *conn, void *buf, int len)
 {
@@ -171,7 +171,7 @@ static int cb_pem_password(char *buf, int size, int rwflag, void *userdata)
 }
 
 FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_WRITE, "UID=%64u NUM=%d RET=%d");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_WRITE_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_WRITE_DUMP, "UID=%64u DATA=%A");
 
 static int ssl_write(tls_conn_t *conn, const void *buf, int num)
 {
@@ -358,7 +358,7 @@ static void bio_set_buf_mem_eof_return(tls_conn_t *conn, long value)
 }
 
 FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_WRITE, "UID=%64u LEN=%d RET=%d");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_WRITE_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_OPENSSL_BIO_WRITE_DUMP, "UID=%64u DATA=%A");
 
 static ssize_t bio_write(tls_conn_t *conn, const void *buf, int len)
 {
@@ -397,7 +397,7 @@ static int perform_encrypted_io(tls_conn_t *conn)
 }
 
 FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_READ, "UID=%64u LEN=%d RET=%d");
-FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_READ_DUMP, "UID=%64u DATA=%B");
+FSTRACE_DECL(ASYNCTLS_OPENSSL_SSL_READ_DUMP, "UID=%64u DATA=%A");
 
 static int ssl_read(tls_conn_t *conn, void *buf, int num)
 {
