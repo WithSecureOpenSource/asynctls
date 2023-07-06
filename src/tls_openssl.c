@@ -30,7 +30,9 @@ static void openssl_initialize(void)
         return;
     initialized = true;
     SSL_load_error_strings();
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     ERR_load_BIO_strings();
+#endif
     OPENSSL_add_all_algorithms_noconf();
     SSL_library_init();
 }
