@@ -223,7 +223,7 @@ static int ssl_get_error(tls_conn_t *conn, int ret)
     switch (error) {
         case SSL_ERROR_SSL:
         case SSL_ERROR_SYSCALL: {
-            unsigned long thread_error = ERR_get_error();
+            unsigned long thread_error = ERR_peek_error();
             char buf[256];
             ERR_error_string_n(thread_error, buf, sizeof buf);
             FSTRACE(ASYNCTLS_OPENSSL_ERR_GET_ERROR, conn->uid, buf);
@@ -410,6 +410,18 @@ static int ssl_read(tls_conn_t *conn, void *buf, int num)
     return ret;
 }
 
+static int handle_ragged_eof(tls_conn_t *conn)
+{
+    if (conn->suppress_ragged_eofs)
+        return 0;
+#ifdef ENODATA
+    errno = ENODATA;
+#else
+    errno = ECONNABORTED;
+#endif
+    return -1;
+}
+
 ssize_t tls_read_plain_input(tls_conn_t *conn, void *buf, size_t count)
 {
     switch (conn->state) {
@@ -434,16 +446,17 @@ ssize_t tls_read_plain_input(tls_conn_t *conn, void *buf, size_t count)
                     return -1;
                 break;
             case SSL_ERROR_SYSCALL:
-                if (errno == 0) {
-                    if (conn->suppress_ragged_eofs)
-                        return 0;
-#ifdef ENODATA
-                    errno = ENODATA;
-#else
-                    errno = ECONNABORTED;
-#endif
-                }
+                if (errno == 0)
+                    return handle_ragged_eof(conn);
                 return -1;
+#ifdef SSL_R_UNEXPECTED_EOF_WHILE_READING
+            case SSL_ERROR_SSL: {
+                unsigned long error = ERR_peek_error();
+                if (ERR_GET_REASON(error) == SSL_R_UNEXPECTED_EOF_WHILE_READING)
+                    return handle_ragged_eof(conn);
+                return declare_protocol_error(conn);
+            }
+#endif
             default:
                 return declare_protocol_error(conn);
         }
