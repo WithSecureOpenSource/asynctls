@@ -194,7 +194,6 @@ static void plain_input_stream_unregister_callback(void *obj)
     tls_conn_t *conn = obj;
     FSTRACE(ASYNCTLS_CONN_PLAIN_INPUT_UNREGISTER, conn->uid);
     conn->plain_input_callback = NULL_ACTION_1;
-    bytestream_1_unregister_callback(conn->encrypted_input_stream);
 }
 
 static const struct bytestream_1_vt plain_input_stream_vt = {
